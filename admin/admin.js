@@ -29,7 +29,8 @@ const TABS = [
       str("form_endpoint", "Form endpoint (Formspree URL; leave empty to hide the form)")] }] },
   { id: "events", label: "Events", file: "events", preview: "../events.html", defs: [
     list("events", "Events", [
-      str("slug", "URL slug (letters, numbers, dashes)"), str("name", "Name"), str("semester", "Semester (e.g. 24-25 Odd Sem)"),
+      { ...str("slug", "URL slug (letters, numbers, dashes)"), check: (v, o) => !/^[a-z0-9-]+$/.test(v || "") ? "Use lowercase letters, numbers and dashes only." : (data.events?.events || []).filter(e => e !== o && e.slug === v).length ? "Another event already uses this slug." : "" },
+      str("name", "Name"), { ...str("semester", "Semester (e.g. 24-25 Odd Sem)"), check: v => /^\d\d-\d\d (Odd|Even) Sem$/.test(v || "") ? "" : "Use the form 24-25 Odd Sem." },
       { t: "bool", key: "flagship", label: "Flagship event" }, txt("description", "Description"),
       { t: "images", key: "photos", label: "Photos" }],
       i => i.name, () => ({ slug: "new-event", name: "New event", semester: "25-26 Odd Sem", flagship: false, description: "", photos: [] }),
@@ -54,9 +55,16 @@ async function getFile(n) {
 }
 const hasDraft = n => { try { return !!localStorage.getItem(KEY(n)); } catch { return false; } };
 
+function revalidate() {
+  const bad = [...document.querySelectorAll("#form .field")].filter(w => w._run && w._run()).length;
+  $("#dl").disabled = bad > 0;
+  if (bad) setStatus("Fix the highlighted fields before downloading. Your draft is still saved.", true);
+  return bad;
+}
 function save() {
   try { localStorage.setItem(KEY(cur.file), JSON.stringify(data[cur.file])); } catch { setStatus("Could not save: browser storage is full or blocked. Download the JSON instead.", true); return; }
   setStatus("Draft saved in this browser. Preview updated.", true);
+  revalidate();
   clearTimeout(timer);
   timer = setTimeout(() => { try { $("#frame").contentWindow.location.reload(); } catch { $("#frame").src = cur.preview; } }, 350);
 }
@@ -68,8 +76,14 @@ function field(def, obj, onChange) {
     w.innerHTML = `<span></span>`; $("span", w).textContent = def.label;
     const i = document.createElement(def.t === "text" ? "textarea" : "input");
     i.value = obj[def.key] ?? "";
-    i.oninput = () => { obj[def.key] = i.value; onChange(); };
-    w.append(i); return w;
+    i.oninput = () => { obj[def.key] = i.value; onChange(); revalidate(); };
+    w.append(i);
+    if (def.check) {
+      const er = document.createElement("small"); er.className = "err"; er.style.color = "#d33"; er.setAttribute("role", "alert"); w.append(er);
+      w._run = () => { const m = def.check(obj[def.key], obj); er.textContent = m; i.setAttribute("aria-invalid", !!m); i.style.outline = m ? "2px solid #d33" : ""; return !!m; };
+      w._run();
+    }
+    return w;
   }
   if (def.t === "bool") {
     const w = document.createElement("label"); w.className = "check";
@@ -168,6 +182,7 @@ async function open(tab) {
   const form = $("#form"); form.innerHTML = "";
   form.append(...tab.defs.map(d => field(d, obj, save)));
   setStatus(hasDraft(tab.file) ? "You have a saved draft in this browser." : "Showing the published content. Edits save as a draft here.", hasDraft(tab.file));
+  revalidate();
   $("#frame").src = tab.preview;
 }
 

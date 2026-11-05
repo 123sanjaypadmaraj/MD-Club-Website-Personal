@@ -80,9 +80,9 @@ collections:
             widget: list
             summary: "{{fields.name}} - {{fields.semester}}"
             fields:
-              - { name: slug, label: URL slug (letters, numbers, dashes), widget: string }
+              - { name: slug, label: URL slug (letters, numbers, dashes), widget: string, pattern: ['^[a-z0-9-]+$', 'Use lowercase letters, numbers and dashes only'] }
               - { name: name, label: Name, widget: string }
-              - { name: semester, label: "Semester (e.g. 24-25 Odd Sem)", widget: string }
+              - { name: semester, label: "Semester (e.g. 24-25 Odd Sem)", widget: string, pattern: ['^\d\d-\d\d (Odd|Even) Sem$', 'Use the form 24-25 Odd Sem'] }
               - { name: flagship, label: Flagship event, widget: boolean, default: false }
               - { name: description, label: Description, widget: text }
               - { name: photos, label: Photos, widget: list, field: { name: photo, label: Photo, widget: image }, required: false }

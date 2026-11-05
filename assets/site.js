@@ -24,6 +24,11 @@ const semYear = s => (s.match(/^\d\d-\d\d/) || [""])[0];
 root.classList.add("js");
 try { root.dataset.skin = new URLSearchParams(location.search).get("skin") || localStorage.getItem("skin") || "night"; } catch { root.dataset.skin = "night"; }
 
+// Keep the browser UI colour (mobile address bar) in step with the active skin's background.
+function syncTheme() {
+  const c = getComputedStyle(root).getPropertyValue("--bg").trim(), m = $('meta[name="theme-color"]');
+  if (c && m) m.content = c;
+}
 function shell(site, events) {
   const years = [...new Set(events.map(e => semYear(e.semester)).filter(Boolean))].sort().reverse();
   const cur = location.pathname.split("/").pop() || "index.html";
@@ -166,6 +171,7 @@ function setSkin(k) {
   root.dataset.skin = k;
   try { localStorage.setItem("skin", k); } catch {}
   $$(".skins button").forEach(x => x.setAttribute("aria-pressed", x.dataset.skin === k));
+  syncTheme();
 }
 function wirePalette(site, events) {
   const d = document.createElement("dialog");
@@ -324,7 +330,7 @@ function wireTeam() {
   const main = $("#main");
   try {
     const site = await load("site"), evs = (await load("events")).events;
-    shell(site, evs);
+    shell(site, evs); syncTheme();
     main.innerHTML = await pages[page](site);
     if (page !== "event" && page !== "events") document.title = (page === "home" ? "" : $("h1", main)?.textContent.replace(/\.$/, "") + " | ") + site.name + " | " + site.college_short;
     document.addEventListener("keydown", e => {
