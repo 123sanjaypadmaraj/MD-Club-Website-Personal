@@ -71,7 +71,7 @@ const head = (eyebrow, title, lead) => `<div class="page-head wrap"><p class="ey
 const eventRow = (e, i) => `<a class="row reveal" href="event.html?e=${encodeURIComponent(e.slug)}"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}</span></a>`;
 
 function phone(events) {
-  const rows = events.slice(0, 5).map((e, i) => `<li class="${i === 0 ? "on" : ""}" data-d="${esc(e.description)}" data-slug="${esc(e.slug)}" tabindex="0" role="button"><b>${esc(e.name)}</b><span>${esc(e.semester)}</span></li>`).join("");
+  const rows = events.slice(0, 5).map((e, i) => `<li class="${i === 0 ? "on" : ""}" data-d="${esc(e.description)}" data-slug="${esc(e.slug)}"><b>${esc(e.name)}</b><span>${esc(e.semester)}</span></li>`).join("");
   return `<div class="stage" aria-hidden="true"><div class="phone"><div class="notch"></div><div class="screen"><p class="s-title">Events</p><ul class="s-list">${rows}</ul><p class="s-desc" id="s-desc">${esc(events[0]?.description || "")}</p><div class="s-bar"><i></i><i></i><i></i></div></div></div>
 <pre class="code"><span class="c1">class</span> <span class="c2">MadClub</span> <span class="c1">extends</span> StatelessWidget {
   <span class="c3">Widget</span> build(context) =&gt;
@@ -169,8 +169,8 @@ function setSkin(k) {
 }
 function wirePalette(site, events) {
   const d = document.createElement("dialog");
-  d.className = "pal";
-  d.innerHTML = `<input id="pal-q" type="text" placeholder="Jump to a page, event or style..." aria-label="Command menu" autocomplete="off"><ul id="pal-l" role="listbox"></ul><p class="pal-hint"><kbd>Up</kbd> <kbd>Down</kbd> to move, <kbd>Enter</kbd> to go, <kbd>Esc</kbd> to close</p>`;
+  d.className = "pal"; d.setAttribute("aria-label", "Command menu");
+  d.innerHTML = `<input id="pal-q" type="text" role="combobox" aria-expanded="true" aria-controls="pal-l" aria-autocomplete="list" placeholder="Jump to a page, event or style..." aria-label="Command menu" autocomplete="off"><ul id="pal-l" role="listbox"></ul><p class="pal-hint"><kbd>Up</kbd> <kbd>Down</kbd> to move, <kbd>Enter</kbd> to go, <kbd>Esc</kbd> to close</p>`;
   document.body.append(d);
   const items = [
     ...NAV.map(([h, t]) => ({ g: "Page", t, run: () => { location.href = h; } })),
@@ -184,7 +184,8 @@ function wirePalette(site, events) {
     const v = q.value.trim().toLowerCase();
     shown = items.filter(i => !v || (i.t + " " + (i.s || "") + " " + i.g).toLowerCase().includes(v)).slice(0, 9);
     sel = Math.min(sel, Math.max(0, shown.length - 1));
-    l.innerHTML = shown.map((i, n) => `<li role="option" aria-selected="${n === sel}" data-n="${n}"><span>${esc(i.t)}${i.s ? ` <em>${esc(i.s)}</em>` : ""}</span><kbd>${i.g}</kbd></li>`).join("") || `<li class="none">No matches</li>`;
+    l.innerHTML = shown.map((i, n) => `<li role="option" id="pal-o${n}" aria-selected="${n === sel}" data-n="${n}"><span>${esc(i.t)}${i.s ? ` <em>${esc(i.s)}</em>` : ""}</span><kbd>${i.g}</kbd></li>`).join("") || `<li class="none">No matches</li>`;
+    q.setAttribute("aria-activedescendant", shown.length ? "pal-o" + sel : "");
   };
   const go = n => { const it = shown[n]; if (!it) return; d.close(); it.run(); };
   q.oninput = () => { sel = 0; draw(); };
@@ -195,7 +196,9 @@ function wirePalette(site, events) {
   };
   l.onclick = e => { const li = e.target.closest("li[data-n]"); if (li) go(+li.dataset.n); };
   d.addEventListener("click", e => { if (e.target === d) d.close(); });
-  const openP = () => { q.value = ""; sel = 0; draw(); d.showModal(); q.focus(); };
+  let opener = null;
+  d.addEventListener("close", () => { if (opener?.isConnected) opener.focus(); });
+  const openP = () => { opener = document.activeElement; q.value = ""; sel = 0; draw(); d.showModal(); q.focus(); };
   $("#open-pal").onclick = openP;
   document.addEventListener("keydown", e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); if (d.open) d.close(); else openP(); }
@@ -223,7 +226,9 @@ function wireMotion() {
   let x = 0, y = 0, tx = 0, ty = 0;
   addEventListener("pointermove", e => { tx = e.clientX; ty = e.clientY; dot.classList.add("on"); dot.classList.toggle("big", !!e.target.closest("a, button, .row, .shot, [role=button], input")); }, {passive:true});
   document.addEventListener("pointerleave", () => dot.classList.remove("on"));
-  (function loop() { x += (tx - x) * .2; y += (ty - y) * .2; dot.style.transform = `translate(${x}px,${y}px)`; requestAnimationFrame(loop); })();
+  let running = false;
+  const loop = () => { x += (tx - x) * .2; y += (ty - y) * .2; dot.style.transform = `translate(${x}px,${y}px)`; if (Math.abs(tx - x) + Math.abs(ty - y) > .5) requestAnimationFrame(loop); else running = false; };
+  addEventListener("pointermove", () => { if (!running) { running = true; requestAnimationFrame(loop); } }, {passive:true});
 }
 // Hero "swarm": named agent cursors that pick page elements, box them, and move on (like a live multiplayer edit).
 function wireSwarm() {
@@ -282,7 +287,6 @@ function wirePhone() {
   const auto = () => { clearInterval(timer); if (!reduced) timer = setInterval(() => show((n + 1) % li.length), 2400); };
   li.forEach((el, i) => {
     el.onclick = () => { show(i); clearInterval(timer); setTimeout(auto, 9000); };
-    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); } };
   });
   desc.onclick = () => { location.href = "event.html?e=" + encodeURIComponent(li[n].dataset.slug); };
   auto();
@@ -323,9 +327,14 @@ function wireTeam() {
     shell(site, evs);
     main.innerHTML = await pages[page](site);
     if (page !== "event" && page !== "events") document.title = (page === "home" ? "" : $("h1", main)?.textContent.replace(/\.$/, "") + " | ") + site.name + " | " + site.college_short;
+    document.addEventListener("keydown", e => {
+      const d = $("#lb"); if (!d?.open || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+      const shots = $$(".shot", main), n = (+d.dataset.i + (e.key === "ArrowRight" ? 1 : -1) + shots.length) % shots.length, b = shots[n];
+      d.dataset.i = n; $("img", d).src = b.dataset.src; $("img", d).alt = $("img", b)?.alt || "";
+    });
     main.addEventListener("click", e => {
       const b = e.target.closest(".shot"); if (!b) return;
-      const d = $("#lb"); $("img", d).src = b.dataset.src; d.showModal();
+      const d = $("#lb"), im = $("img", d), t = $("img", b); im.src = b.dataset.src; im.alt = t?.alt || ""; d.dataset.i = $$(".shot", main).indexOf(b); d.setAttribute("aria-label", "Photo viewer"); d.showModal();
     });
     wirePalette(site, evs); wireMotion(); wirePhone(); wireEvents(); wireTeam(); wireSwarm(); wireDock(site);
     activate();
