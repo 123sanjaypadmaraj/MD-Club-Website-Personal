@@ -112,8 +112,11 @@ const pages = {
     if (!e) { document.title = "Event not found | MAD Club"; return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
     document.title = `${e.name} | MAD Club`;
     const ph = e.photos || [];
+    const ord = [...events].sort((x, y) => semKey(y.semester) - semKey(x.semester)), i = ord.indexOf(e);
+    const lk = (ev, t) => ev ? `<a class="btn" href="event.html?e=${encodeURIComponent(ev.slug)}">${t}: ${esc(ev.name)}</a>` : "";
+    const evNav = ord.length > 1 ? `<nav class="back" aria-label="More events">${lk(ord[i + 1], "Older")}${lk(ord[i - 1], "Newer")}</nav>` : "";
     return head(e.semester, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(e.name)}, photo ${i + 1}"></button>`).join("")}</div>` : `<div class="empty">No photos yet. Add them in the admin panel under Events.</div>`}
-<p class="back"><a class="btn" href="events.html">All events</a></p></div><dialog id="lb"><img alt=""><form method="dialog"><button class="btn">Close</button></form></dialog>`;
+<p class="back"><a class="btn" href="events.html">All events</a></p>${evNav}</div><dialog id="lb"><img alt=""><form method="dialog"><button class="btn">Close</button></form></dialog>`;
   },
 
   async about(site) {
