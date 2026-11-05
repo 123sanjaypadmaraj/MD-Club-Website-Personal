@@ -1,17 +1,17 @@
 /* MAD Club: one structure, three skins (night, pop, raw) switched by html[data-skin]. */
 :root,:root[data-skin=night]{
   --display:"Bricolage Grotesque",system-ui,sans-serif;--body:"Instrument Sans",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
-  --bg:#08080a;--surface:#111114;--fg:#f2f2ee;--muted:#9a9aa3;--line:#26262c;--accent:#c6ff3d;--accent-text:#c6ff3d;--on-accent:#0a0a0a;
+  --bg:#0b0f1a;--surface:#131a2b;--fg:#eef1ff;--muted:#8f9ab8;--line:#243049;--accent:#7c5cff;--accent-text:#b3a6ff;--on-accent:#ffffff;
   --radius:14px;--bw:1px;--shadow:none;--hover-shadow:none;--caps:none;--h-weight:700;--h-track:-.035em;
 }
 :root[data-skin=pop]{
   --display:"Bricolage Grotesque",system-ui,sans-serif;--body:"Instrument Sans",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
-  --bg:#fff1d6;--surface:#ffffff;--fg:#15142b;--muted:#4f4d73;--line:#15142b;--accent:#ff5a36;--accent-text:#c2310f;--on-accent:#ffffff;
+  --bg:#e9e4ff;--surface:#ffffff;--fg:#1a1240;--muted:#54497f;--line:#1a1240;--accent:#ff4f8b;--accent-text:#c01257;--on-accent:#ffffff;
   --radius:22px;--bw:2.5px;--shadow:5px 5px 0 var(--fg);--hover-shadow:8px 8px 0 var(--fg);--caps:none;--h-weight:800;--h-track:-.035em;
 }
 :root[data-skin=raw]{
   --display:"Archivo Black",Impact,sans-serif;--body:"Space Mono",ui-monospace,Consolas,monospace;--mono:"Space Mono",ui-monospace,Consolas,monospace;
-  --bg:#ffffff;--surface:#ffffff;--fg:#000000;--muted:#3d3d3d;--line:#000000;--accent:#1500ff;--accent-text:#1500ff;--on-accent:#ffffff;
+  --bg:#ffffff;--surface:#ffffff;--fg:#000000;--muted:#3d3d3d;--line:#000000;--accent:#e6005c;--accent-text:#e6005c;--on-accent:#ffffff;
   --radius:0px;--bw:2px;--shadow:none;--hover-shadow:none;--caps:uppercase;--h-weight:400;--h-track:-.02em;
 }
 *{box-sizing:border-box;margin:0}
