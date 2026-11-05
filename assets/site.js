@@ -6,7 +6,9 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 // Drafts saved by /admin/ (testing editor) live in localStorage and override the published JSON in that browser only.
-const load = n => {
+const cache = new Map();
+const load = n => { if (!cache.has(n)) cache.set(n, loadRaw(n)); return cache.get(n); };
+const loadRaw = n => {
   try { const d = localStorage.getItem("mad_content_" + n); if (d) return Promise.resolve(JSON.parse(d)); } catch {}
   return fetch(`content/${n}.json`).then(r => { if (!r.ok) throw new Error(n); return r.json(); });
 };
@@ -15,6 +17,8 @@ const draftKeys = () => { try { return Object.keys(localStorage).filter(k => k.s
 const photoSrc = p => /^(data:|https?:|\/\/)/i.test(p) ? p : String(p).replace(/^\/+/, "");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = document.body.dataset.page;
+// Orders semesters chronologically: year prefix, then Odd (1) before Even (2); unknown formats sort last.
+const semKey = s => { const m = String(s).match(/^(\d\d)-(\d\d) (Odd|Even)/); return m ? +m[1] * 10 + (m[3] === "Even" ? 2 : 1) : -1; };
 const semYear = s => (s.match(/^\d\d-\d\d/) || [""])[0];
 
 root.classList.add("js");
@@ -167,7 +171,7 @@ function wirePalette(site, events) {
   document.body.append(d);
   const items = [
     ...NAV.map(([h, t]) => ({ g: "Page", t, run: () => { location.href = h; } })),
-    ...events.map(e => ({ g: "Event", t: e.name, s: e.semester, run: () => { location.href = "event.html?e=" + encodeURIComponent(e.slug); } })),
+    ...[...events].sort((a, b) => semKey(b.semester) - semKey(a.semester)).map(e => ({ g: "Event", t: e.name, s: e.semester, run: () => { location.href = "event.html?e=" + encodeURIComponent(e.slug); } })),
     ...SKINS.map(([k, t]) => ({ g: "Style", t: t + " style", run: () => setSkin(k) })),
     { g: "Link", t: "Instagram " + site.instagram_handle, run: () => open(site.instagram, "_blank", "noopener") }
   ];
@@ -225,7 +229,7 @@ function wireSwarm() {
   const layer = document.createElement("div");
   layer.className = "swarm"; layer.setAttribute("aria-hidden", "true");
   hero.prepend(layer);
-  const roster = [["Design", "#c6ff3d"], ["Flutter", "#4cc9f0"], ["Copy", "#ff7ad9"], ["QA", "#ffb703"], ["Deploy", "#a78bfa"]];
+  const roster = [["Design", "#7c5cff"], ["Flutter", "#4cc9f0"], ["Copy", "#ff7ad9"], ["QA", "#ffb703"], ["Deploy", "#a78bfa"]];
   const agents = roster.slice(0, innerWidth < 700 ? 3 : 5).map(([name, color]) => {
     const el = document.createElement("div");
     el.className = "agent"; el.style.setProperty("--c", color);
@@ -287,7 +291,7 @@ function wireEvents() {
   const draw = () => {
     const v = st.q.trim().toLowerCase();
     const f = st.events.filter(e => (st.y === "all" || semYear(e.semester) === st.y) && (!v || (e.name + " " + e.description + " " + e.semester).toLowerCase().includes(v)));
-    const sems = [...new Set(f.map(e => e.semester))].sort().reverse();
+    const sems = [...new Set(f.map(e => e.semester))].sort((a, b) => semKey(b) - semKey(a) || (a < b ? 1 : -1));
     list.innerHTML = sems.map(s => `<h2 class="sem">${esc(s)}</h2><div class="rows">${f.filter(e => e.semester === s).map(eventRow).join("")}</div>`).join("") || `<div class="empty">No events match. Try a different word or year.</div>`;
     $$(".reveal", list).forEach(el => el.classList.add("in"));
     count.textContent = `${f.length} of ${st.events.length} events`;
