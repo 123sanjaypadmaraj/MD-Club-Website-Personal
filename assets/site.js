@@ -72,6 +72,7 @@ function activate() {
   $$("[data-count]").forEach(el => cio.observe(el));
 }
 
+const setMeta = (sel, attr, key, val) => { let m = $(sel); if (!m) { m = document.createElement("meta"); m.setAttribute(attr, key); document.head.append(m); } m.setAttribute("content", val); };
 const head = (eyebrow, title, lead) => `<div class="page-head wrap"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="reveal">${esc(title)}</h1>${lead ? `<p class="lead reveal">${esc(lead)}</p>` : ""}</div>`;
 const eventRow = (e, i) => `<a class="row reveal" href="event.html?e=${encodeURIComponent(e.slug)}"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}</span></a>`;
 
@@ -114,14 +115,17 @@ const pages = {
   async event() {
     const { events } = await load("events");
     const e = events.find(x => x.slug === new URLSearchParams(location.search).get("e"));
-    if (!e) { document.title = "Event not found | MAD Club"; return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
+    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
     document.title = `${e.name} | MAD Club`;
+    setMeta('meta[name=description]', "name", "description", e.description);
+    setMeta('meta[property="og:title"]', "property", "og:title", `${e.name} | MAD Club`);
+    setMeta('meta[property="og:description"]', "property", "og:description", e.description);
     const ph = e.photos || [];
     const ord = [...events].sort((x, y) => semKey(y.semester) - semKey(x.semester)), i = ord.indexOf(e);
     const lk = (ev, t) => ev ? `<a class="btn" href="event.html?e=${encodeURIComponent(ev.slug)}">${t}: ${esc(ev.name)}</a>` : "";
     const evNav = ord.length > 1 ? `<nav class="back" aria-label="More events">${lk(ord[i + 1], "Older")}${lk(ord[i - 1], "Newer")}</nav>` : "";
     return head(e.semester, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(e.name)}, photo ${i + 1}"></button>`).join("")}</div>` : `<div class="empty">No photos yet. Add them in the admin panel under Events.</div>`}
-<p class="back"><a class="btn" href="events.html">All events</a></p>${evNav}</div><dialog id="lb"><img alt=""><form method="dialog"><button class="btn">Close</button></form></dialog>`;
+<p class="back"><a class="btn" href="events.html">All events</a> <button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>${evNav}</div><dialog id="lb"><img alt=""><form method="dialog"><button class="btn">Close</button></form></dialog>`;
   },
 
   async about(site) {
@@ -356,7 +360,22 @@ function wireTeam() {
       const shots = $$(".shot", main), n = (+d.dataset.i + (e.key === "ArrowRight" ? 1 : -1) + shots.length) % shots.length, b = shots[n];
       d.dataset.i = n; $("img", d).src = b.dataset.src; $("img", d).alt = $("img", b)?.alt || "";
     });
-    main.addEventListener("click", e => {
+    main.addEventListener("error", e => {
+      const b = e.target.closest?.(".shot"); if (!b || e.target.tagName !== "IMG") return;
+      b.remove();
+      if (!$(".shot", main)) { const g = $(".gallery", main); if (g) g.outerHTML = `<div class="empty">No photos yet. Add them in the admin panel under Events.</div>`; }
+    }, true);
+    main.addEventListener("click", async e => {
+      const sh = e.target.closest("#share");
+      if (sh) {
+        const ev = evs.find(x => x.slug === new URLSearchParams(location.search).get("e")), msg = $("#share-msg", main), old = sh.textContent;
+        const say = t => { sh.textContent = t; if (msg) msg.textContent = t; setTimeout(() => { sh.textContent = old; if (msg) msg.textContent = ""; }, 2000); };
+        try {
+          if (navigator.share) await navigator.share({ title: ev?.name, text: ev?.description, url: location.href });
+          else { await navigator.clipboard.writeText(location.href); say("Link copied"); }
+        } catch (err) { if (err?.name !== "AbortError") say("Copy failed"); }
+        return;
+      }
       const b = e.target.closest(".shot"); if (!b) return;
       const d = $("#lb"), im = $("img", d), t = $("img", b); im.src = b.dataset.src; im.alt = t?.alt || ""; d.dataset.i = $$(".shot", main).indexOf(b); d.setAttribute("aria-label", "Photo viewer"); d.showModal();
     });
