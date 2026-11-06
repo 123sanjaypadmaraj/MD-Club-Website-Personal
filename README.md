@@ -28,7 +28,7 @@ Open `http://localhost:8000/admin/cms/`. `local_backend: true` skips login and e
 
 ## Looks
 
-Three skins (Night, Pop, Raw) share one structure. Visitors switch with the control in the header, and the choice is remembered. Change the default in the inline script in each page's `<head>` and in `assets/site.js`.
+Four dark themes (Nebula purple, Ocean blue, Aurora green, Solar amber) share one structure. Visitors switch with the control in the header, and the choice is remembered. Change the default in the inline script in each page's `<head>` and in `assets/site.js`.
 
 ## Interactions
 

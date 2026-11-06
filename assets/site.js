@@ -1,6 +1,7 @@
 // MAD Club site renderer: every page is built from content/*.json (edited via /admin).
 const NAV = [["index.html","Home"],["events.html","Events"],["about.html","About"],["achievements.html","Achievements"],["team.html","Team"],["contact.html","Contact"]];
-const SKINS = [["night","Night"],["pop","Pop"],["raw","Raw"]];
+const SKINS = [["nebula","Nebula"],["ocean","Ocean"],["aurora","Aurora"],["solar","Solar"]];
+const skinOk = k => SKINS.some(s => s[0] === k) ? k : "nebula";
 const root = document.documentElement;
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -22,7 +23,7 @@ const semKey = s => { const m = String(s).match(/^(\d\d)-(\d\d) (Odd|Even)/); re
 const semYear = s => (s.match(/^\d\d-\d\d/) || [""])[0];
 
 root.classList.add("js");
-try { root.dataset.skin = new URLSearchParams(location.search).get("skin") || localStorage.getItem("skin") || "night"; } catch { root.dataset.skin = "night"; }
+try { root.dataset.skin = skinOk(new URLSearchParams(location.search).get("skin") || localStorage.getItem("skin")); } catch { root.dataset.skin = "nebula"; }
 
 // Keep the browser UI colour (mobile address bar) in step with the active skin's background.
 function syncTheme() {
@@ -267,7 +268,7 @@ function wireSwarm() {
   const layer = document.createElement("div");
   layer.className = "swarm"; layer.setAttribute("aria-hidden", "true");
   hero.prepend(layer);
-  const roster = [["Design", "#7c5cff"], ["Flutter", "#4cc9f0"], ["Copy", "#ff7ad9"], ["QA", "#ffb703"], ["Deploy", "#a78bfa"]];
+  const roster = [["Design", "#7c5cff"], ["Flutter", "#4cc9f0"], ["Copy", "#5eead4"], ["QA", "#ffb703"], ["Deploy", "#a78bfa"]];
   const agents = roster.slice(0, innerWidth < 700 ? 3 : 5).map(([name, color]) => {
     const el = document.createElement("div");
     el.className = "agent"; el.style.setProperty("--c", color);
