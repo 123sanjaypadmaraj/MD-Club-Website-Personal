@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Syntax-check scripts
+        run: node --check assets/site.js && node --check admin/admin.js && node --check scripts/check-content.mjs
       - name: Validate content
         run: node scripts/check-content.mjs
       - name: Stage public files

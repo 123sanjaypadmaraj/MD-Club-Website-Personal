@@ -46,7 +46,22 @@ else {
   });
 }
 
-(docs["team.json"]?.galleries || []).forEach((g, i) => checkPhotos(`team.json gallery #${i + 1} (${g.label || "?"})`, g.photos));
+const team = docs["team.json"];
+if (team) {
+  const str = v => typeof v === "string" && v.trim() !== "";
+  if (!str(team.current_year)) errors.push("team.json: current_year missing or not a string");
+  (team.current || []).forEach((m, i) => { for (const k of ["name", "role"]) if (!str(m?.[k])) errors.push(`team.json current #${i + 1} (${m?.name || "?"}): missing ${k}`); });
+  (team.earlier || []).forEach((m, i) => { for (const k of ["name", "role", "year"]) if (!str(m?.[k])) errors.push(`team.json earlier #${i + 1} (${m?.name || "?"}): missing ${k}`); });
+  const labels = new Set();
+  (team.galleries || []).forEach((g, i) => {
+    if (!str(g?.label)) errors.push(`team.json gallery #${i + 1}: missing label`);
+    else if (labels.has(g.label)) errors.push(`team.json gallery #${i + 1} (${g.label}): duplicate label`);
+    else labels.add(g.label);
+    if (!Array.isArray(g?.photos)) errors.push(`team.json gallery #${i + 1} (${g?.label || "?"}): photos must be an array`);
+  });
+}
+
+(docs["team.json"]?.galleries || []).forEach((g, i) => checkPhotos(`team.json gallery #${i + 1} (${g.label || "?"})`, Array.isArray(g.photos) ? g.photos : []));
 
 try {
   const used = new Set();
