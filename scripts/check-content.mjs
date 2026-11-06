@@ -12,6 +12,21 @@ for (const f of readdirSync(dir).filter(f => f.endsWith(".json"))) {
   catch (e) { errors.push(`${f}: invalid JSON (${e.message})`); }
 }
 
+function checkPhotos(id, photos) {
+  for (const p of photos || []) {
+    if (String(p).startsWith("data:")) errors.push(`${id}: photo is a data: URL`);
+    else if (!/^(https?:)?\/\//.test(p)) {
+      const f = join(root, String(p).replace(/^\//, ""));
+      if (!existsSync(f)) errors.push(`${id}: photo not found on disk: ${p}`);
+      else {
+        if (!/\.(jpe?g|png|webp)$/i.test(p)) errors.push(`${id}: unsupported image type: ${p}`);
+        const kb = statSync(f).size / 1024;
+        if (kb > 500) console.warn(`warning: ${p} is ${Math.round(kb)} KB (over 500 KB; consider compressing)`);
+      }
+    }
+  }
+}
+
 const events = docs["events.json"]?.events;
 if (!Array.isArray(events)) errors.push("events.json: missing 'events' array");
 else {
@@ -27,20 +42,19 @@ else {
     }
     if (ev.semester && !/^\d\d-\d\d (Odd|Even) Sem$/.test(ev.semester))
       errors.push(`${id}: semester must look like "24-25 Odd Sem"`);
-    for (const p of ev.photos || []) {
-      if (String(p).startsWith("data:")) errors.push(`${id}: photo is a data: URL`);
-      else if (!/^(https?:)?\/\//.test(p)) {
-        const f = join(root, String(p).replace(/^\//, ""));
-        if (!existsSync(f)) errors.push(`${id}: photo not found on disk: ${p}`);
-        else {
-          if (!/\.(jpe?g|png|webp)$/i.test(p)) errors.push(`${id}: unsupported image type: ${p}`);
-          const kb = statSync(f).size / 1024;
-          if (kb > 500) console.warn(`warning: ${p} is ${Math.round(kb)} KB (over 500 KB; consider compressing)`);
-        }
-      }
-    }
+    checkPhotos(id, ev.photos);
   });
 }
+
+(docs["team.json"]?.galleries || []).forEach((g, i) => checkPhotos(`team.json gallery #${i + 1} (${g.label || "?"})`, g.photos));
+
+try {
+  const sm = readFileSync(join(root, "sitemap.xml"), "utf8");
+  const inMap = new Set([...sm.matchAll(/event\.html\?e=([^<"&\s]+)/g)].map(m => m[1]));
+  const slugs = new Set((events || []).map(e => e.slug).filter(Boolean));
+  for (const s of slugs) if (!inMap.has(s)) errors.push(`sitemap.xml: missing event.html?e=${s} (update sitemap.xml)`);
+  for (const s of inMap) if (!slugs.has(s)) errors.push(`sitemap.xml: lists event.html?e=${s} but no such event (update sitemap.xml)`);
+} catch (e) { errors.push("sitemap.xml: cannot read (" + e.message + ")"); }
 
 try {
   if (readFileSync(join(root, "admin/cms/config.yml"), "utf8").includes("YOUR_GITHUB_USERNAME"))

@@ -8,6 +8,8 @@ Static site with a visual editor at `/admin/` and a GitHub-backed CMS (Decap) at
 
 **2. Real publishing editor at `/admin/cms/` (GitHub login).** Edit and press **Publish**. Decap commits to the repo and the site redeploys in about a minute. Only GitHub users with write access to the repo can log in; add collaborators on GitHub to give access.
 
+When you add or remove an event, also add or remove its `event.html?e=<slug>` line in `sitemap.xml`; the content check fails if they disagree.
+
 ## One-time setup (for the GitHub editor)
 
 1. Push this folder to a GitHub repo (branch `main`).

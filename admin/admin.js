@@ -38,7 +38,8 @@ const TABS = [
   { id: "team", label: "Team", file: "team", preview: "../team.html", defs: [
     str("current_year", "Current team year"),
     list("current", "Current team", [str("name", "Name"), str("role", "Role")], i => i.name, null, i => i.role),
-    list("earlier", "Earlier teams", [str("name", "Name"), str("role", "Role"), str("year", "Year")], i => i.name, null, i => `${i.role}, ${i.year}`)] },
+    list("earlier", "Earlier teams", [str("name", "Name"), str("role", "Role"), str("year", "Year")], i => i.name, null, i => `${i.role}, ${i.year}`),
+    list("galleries", "Team photo galleries", [str("label", "Gallery title"), { t: "images", key: "photos", label: "Photos" }], i => i.label, () => ({ label: "New gallery", photos: [] }), i => `${(i.photos || []).length} photos`)] },
   { id: "achievements", label: "Achievements", file: "achievements", preview: "../achievements.html", defs: [
     list("stats", "Figures", [str("value", "Figure"), str("label", "Label")], i => `${i.value} ${i.label}`),
     list("apps", "Apps built by members", [str("name", "Name"), txt("text", "Description")], i => i.name)] }
@@ -205,8 +206,20 @@ function start() {
         }));
       }
     }
+    if (cur.file === "team") {
+      out = JSON.parse(JSON.stringify(out));
+      for (const g of out.galleries || []) {
+        const slug = String(g.label || "gallery").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "gallery";
+        g.photos = await Promise.all((g.photos || []).map(async (src, i) => {
+          if (!String(src).startsWith("data:")) return src;
+          const n1 = i + 1;
+          save1(await (await fetch(src)).blob(), `team-${slug}-${n1}.jpg`); n++;
+          return `photos/team/${slug}/${n1}.jpg`;
+        }));
+      }
+    }
     save1(new Blob([JSON.stringify(out, null, 2) + "\n"], { type: "application/json" }), cur.file + ".json");
-    setStatus(n ? `Downloaded events.json and ${n} photos. Move each <slug>-<n>.jpg into photos/<slug>/ and rename it <n>.jpg, then replace content/events.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
+    setStatus(n ? `Downloaded ${cur.file}.json and ${n} photos. Move each photo into the folder named in the JSON (photos/<name>/) and rename it to just its number (1.jpg, 2.jpg...), then replace content/${cur.file}.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
   };
   $("#reset").onclick = async () => {
     if (!confirm("Discard your saved draft for this file and go back to the published content?")) return;
