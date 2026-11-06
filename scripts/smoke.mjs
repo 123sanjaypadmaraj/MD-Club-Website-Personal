@@ -35,6 +35,9 @@ const dump = url => new Promise(resolve => {
     { maxBuffer: 64 * 1024 * 1024, timeout: 60000 }, (err, out) => resolve({ err, out: out || "" }));
 });
 
+const team = JSON.parse(readFileSync(join(root, "content/team.json"), "utf8"));
+const shots = (team.galleries || []).reduce((n, g) => n + (g.photos || []).length, 0);
+
 let failed = 0;
 for (const u of urls) {
   const { err, out } = await dump(u);
@@ -42,6 +45,13 @@ for (const u of urls) {
   if (err) why.push("chrome error: " + err.message.split("\n")[0]);
   if (!out.includes("<h1") && u !== "404.html") why.push("no <h1");
   if (u === "404.html" && !out.includes("<h1")) why.push("no <h1");
+  const htmlTag = (out.match(/<html[^>]*>/i) || [""])[0];
+  const attr = n => (htmlTag.match(new RegExp("data-" + n + '="([^"]*)"')) || [])[1];
+  if (attr("js-error") !== undefined) why.push("JS error: " + attr("js-error"));
+  if (attr("csp-violation") !== undefined) why.push("CSP violation: " + attr("csp-violation"));
+  if (attr("ready") !== "1") why.push("page never finished rendering (no data-ready)");
+  if (u === "events.html" && !out.includes(`${events.length} of ${events.length} events`)) why.push(`expected "${events.length} of ${events.length} events"`);
+  if (u === "team.html" && (out.match(/class="shot"/g) || []).length !== shots) why.push(`expected ${shots} photo buttons`);
   if (out.includes("Could not load content")) why.push("Could not load content");
   if (u.startsWith("event.html?e=") && out.includes("Event not found")) why.push("Event not found");
   if (why.length) { failed++; console.log(`FAIL ${u}: ${why.join("; ")}`); } else console.log(`ok   ${u}`);
