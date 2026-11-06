@@ -68,7 +68,8 @@ function save() {
   clearTimeout(timer);
   timer = setTimeout(() => { try { $("#frame").contentWindow.location.reload(); } catch { $("#frame").src = cur.preview; } }, 350);
 }
-function setStatus(msg, dirty) { const s = $("#status"); s.textContent = msg; s.classList.toggle("dirty", !!dirty); }
+function draftKB() { let t = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith("mad_content_")) t += k.length + (localStorage.getItem(k) || "").length; } } catch {} return Math.round(t / 1024); }
+function setStatus(msg, dirty) { const s = $("#status"); s.textContent = msg + ` (drafts use about ${draftKB()} KB of browser storage)`; s.classList.toggle("dirty", !!dirty); }
 
 function field(def, obj, onChange) {
   if (def.t === "string" || def.t === "text") {
@@ -198,14 +199,14 @@ function start() {
       for (const ev of out.events || []) {
         ev.photos = await Promise.all((ev.photos || []).map(async (src, i) => {
           if (!String(src).startsWith("data:")) return src;
-          const name = `${ev.slug}-${i + 1}.jpg`;
-          save1(await (await fetch(src)).blob(), name); n++;
-          return "photos/" + name;
+          const n1 = i + 1;
+          save1(await (await fetch(src)).blob(), `${ev.slug}-${n1}.jpg`); n++;
+          return `photos/${ev.slug}/${n1}.jpg`;
         }));
       }
     }
     save1(new Blob([JSON.stringify(out, null, 2) + "\n"], { type: "application/json" }), cur.file + ".json");
-    setStatus(n ? `Downloaded events.json and ${n} photos. Put the photos in the photos/ folder and replace content/events.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
+    setStatus(n ? `Downloaded events.json and ${n} photos. Move each <slug>-<n>.jpg into photos/<slug>/ and rename it <n>.jpg, then replace content/events.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
   };
   $("#reset").onclick = async () => {
     if (!confirm("Discard your saved draft for this file and go back to the published content?")) return;

@@ -75,7 +75,7 @@ function activate() {
 
 const setMeta = (sel, attr, key, val) => { let m = $(sel); if (!m) { m = document.createElement("meta"); m.setAttribute(attr, key); document.head.append(m); } m.setAttribute("content", val); };
 const head = (eyebrow, title, lead) => `<div class="page-head wrap"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="reveal">${esc(title)}</h1>${lead ? `<p class="lead reveal">${esc(lead)}</p>` : ""}</div>`;
-const eventRow = (e, i) => `<a class="row reveal" href="event.html?e=${encodeURIComponent(e.slug)}"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}</span></a>`;
+const eventRow = (e, i) => `<a class="row reveal" href="event.html?e=${encodeURIComponent(e.slug)}"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}${(e.photos || []).length ? ` · ${(e.photos || []).length} photo${e.photos.length === 1 ? "" : "s"}` : ""}</span></a>`;
 
 function phone(events) {
   const rows = events.slice(0, 5).map((e, i) => `<li class="${i === 0 ? "on" : ""}" data-d="${esc(e.description)}" data-slug="${esc(e.slug)}"><b>${esc(e.name)}</b><span>${esc(e.semester)}</span></li>`).join("");
@@ -115,11 +115,9 @@ const pages = {
 
   async event() {
     const { events } = await load("events");
-    const setMeta = (sel, attr, key, val) => { let m = document.head.querySelector(sel); if (!m) { m = document.createElement("meta"); m.setAttribute(attr, key); document.head.appendChild(m); } m.setAttribute("content", val); };
     const e = events.find(x => x.slug === new URLSearchParams(location.search).get("e"));
-    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
+    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
     document.title = `${e.name} | MAD Club`;
-    setMeta('meta[name=description]', "name", "description", e.description); setMeta('meta[property="og:title"]', "property", "og:title", `${e.name} | MAD Club`); setMeta('meta[property="og:description"]', "property", "og:description", e.description);
     setMeta('meta[name=description]', "name", "description", e.description);
     setMeta('meta[property="og:title"]', "property", "og:title", `${e.name} | MAD Club`);
     setMeta('meta[property="og:description"]', "property", "og:description", e.description);

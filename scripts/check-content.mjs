@@ -1,5 +1,5 @@
 // Validates content/*.json. Plain Node, no dependencies. Run: node scripts/check-content.mjs
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,8 +29,15 @@ else {
       errors.push(`${id}: semester must look like "24-25 Odd Sem"`);
     for (const p of ev.photos || []) {
       if (String(p).startsWith("data:")) errors.push(`${id}: photo is a data: URL`);
-      else if (!/^(https?:)?\/\//.test(p) && !existsSync(join(root, String(p).replace(/^\//, ""))))
-        errors.push(`${id}: photo not found on disk: ${p}`);
+      else if (!/^(https?:)?\/\//.test(p)) {
+        const f = join(root, String(p).replace(/^\//, ""));
+        if (!existsSync(f)) errors.push(`${id}: photo not found on disk: ${p}`);
+        else {
+          if (!/\.(jpe?g|png|webp)$/i.test(p)) errors.push(`${id}: unsupported image type: ${p}`);
+          const kb = statSync(f).size / 1024;
+          if (kb > 500) console.warn(`warning: ${p} is ${Math.round(kb)} KB (over 500 KB; consider compressing)`);
+        }
+      }
     }
   });
 }
