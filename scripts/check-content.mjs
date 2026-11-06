@@ -49,7 +49,18 @@ else {
 (docs["team.json"]?.galleries || []).forEach((g, i) => checkPhotos(`team.json gallery #${i + 1} (${g.label || "?"})`, g.photos));
 
 try {
-  const sm = readFileSync(join(root, "sitemap.xml"), "utf8");
+  const used = new Set();
+  const norm = p => String(p).replace(/^\//, "").replace(/\\/g, "/");
+  for (const ev of events || []) for (const p of ev.photos || []) used.add(norm(p));
+  for (const g of docs["team.json"]?.galleries || []) for (const p of g.photos || []) used.add(norm(p));
+  const walk = d => readdirSync(join(root, d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(d + "/" + e.name) : [d + "/" + e.name]);
+  const unused = walk("photos").filter(f => /\.(jpe?g|png|webp)$/i.test(f) && !used.has(f));
+  for (const f of unused) console.warn(`warning: ${f} is not used by any event or team gallery`);
+  if (unused.length) console.warn(`warning: ${unused.length} unused photo file(s) in photos/`);
+} catch {}
+
+try {
+  const sm =readFileSync(join(root, "sitemap.xml"), "utf8");
   const inMap = new Set([...sm.matchAll(/event\.html\?e=([^<"&\s]+)/g)].map(m => m[1]));
   const slugs = new Set((events || []).map(e => e.slug).filter(Boolean));
   for (const s of slugs) if (!inMap.has(s)) errors.push(`sitemap.xml: missing event.html?e=${s} (update sitemap.xml)`);
