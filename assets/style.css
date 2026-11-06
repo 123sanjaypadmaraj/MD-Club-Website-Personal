@@ -255,3 +255,4 @@ footer{padding-bottom:104px}
 .draft-banner{position:sticky;top:0;z-index:60;padding:.5rem 1rem;font-size:.85rem;text-align:center;background:#ffb703;color:#111}
 .draft-banner button{font:inherit;margin:0 .5rem;padding:.15rem .6rem;cursor:pointer}
 .draft-banner a{color:inherit;text-decoration:underline}
+.form-err{color:inherit;border-left:3px solid currentColor;padding:.5rem .75rem;margin-top:1rem}

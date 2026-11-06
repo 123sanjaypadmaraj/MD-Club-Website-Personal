@@ -158,7 +158,7 @@ const pages = {
 
   async contact(site) {
     const c = site.contact, ep = (c.form_endpoint || "").trim();
-    const form = ep ? `<form action="${esc(ep)}" method="POST" class="form"><label>Name<input name="name" autocomplete="name" required></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Why do you want to join?<textarea name="message" rows="4"></textarea></label><button class="btn primary" type="submit">Send</button></form>`
+    const form = ep ? `<form action="${esc(ep)}" method="POST" class="form" data-ajax><input class="sr" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Name<input name="name" autocomplete="name" required></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Why do you want to join?<textarea name="message" rows="4"></textarea></label><button class="btn primary" type="submit">Send</button></form>`
       : `<div class="empty">Online registration opens soon. Message us on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a> to join.</div>`;
     return head("Contact us", "Join MAD Club.", "New members are welcome every semester.") +
       `<div class="wrap"><div class="grid"><div class="card"><h3>Instagram</h3><p><a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></p></div><div class="card"><h3>Coordinators</h3><p>${esc(c.coordinators)}</p></div><div class="card"><h3>Where</h3><p>${esc(site.college)}</p></div></div>
@@ -167,6 +167,24 @@ const pages = {
 };
 
 // ---------- interactivity ----------
+function wireContactForm(site) {
+  const f = $("form[data-ajax]"); if (!f) return;
+  const btn = f.querySelector("button[type=submit]"), label = btn.textContent;
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    f.querySelector(".form-err")?.remove();
+    btn.disabled = true; btn.textContent = "Sending...";
+    try {
+      const res = await fetch(f.action, { method: "POST", body: new FormData(f), headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(res.status);
+      const em = esc(f.elements.email.value);
+      f.outerHTML = `<div class="empty" role="status">Thanks, we will get back to you on ${em}.</div>`;
+    } catch {
+      btn.disabled = false; btn.textContent = label;
+      f.insertAdjacentHTML("beforeend", `<p class="form-err" role="alert">Could not send. Try again or message us on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a>.</p>`);
+    }
+  });
+}
 function setSkin(k) {
   root.dataset.skin = k;
   try { localStorage.setItem("skin", k); } catch {}
@@ -342,7 +360,7 @@ function wireTeam() {
       const b = e.target.closest(".shot"); if (!b) return;
       const d = $("#lb"), im = $("img", d), t = $("img", b); im.src = b.dataset.src; im.alt = t?.alt || ""; d.dataset.i = $$(".shot", main).indexOf(b); d.setAttribute("aria-label", "Photo viewer"); d.showModal();
     });
-    wirePalette(site, evs); wireMotion(); wirePhone(); wireEvents(); wireTeam(); wireSwarm(); wireDock(site);
+    wirePalette(site, evs); wireMotion(); wirePhone(); wireEvents(); wireContactForm(site); wireTeam(); wireSwarm(); wireDock(site);
     activate();
   } catch (err) {
     const local = location.protocol === "file:", dk = draftKeys().length;

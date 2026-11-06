@@ -190,11 +190,22 @@ function start() {
   $("#login").hidden = true; $("#app").hidden = false;
   $("#tabs").innerHTML = TABS.map(t => `<button type="button" data-id="${t.id}">${t.label}</button>`).join("");
   $("#tabs").onclick = e => { const b = e.target.closest("button"); if (b) open(TABS.find(t => t.id === b.dataset.id)); };
-  $("#dl").onclick = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data[cur.file], null, 2) + "\n"], { type: "application/json" }));
-    a.download = cur.file + ".json"; a.click(); URL.revokeObjectURL(a.href);
-    setStatus(`Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
+  const save1 = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  $("#dl").onclick = async () => {
+    let out = data[cur.file], n = 0;
+    if (cur.file === "events") {
+      out = JSON.parse(JSON.stringify(out));
+      for (const ev of out.events || []) {
+        ev.photos = await Promise.all((ev.photos || []).map(async (src, i) => {
+          if (!String(src).startsWith("data:")) return src;
+          const name = `${ev.slug}-${i + 1}.jpg`;
+          save1(await (await fetch(src)).blob(), name); n++;
+          return "photos/" + name;
+        }));
+      }
+    }
+    save1(new Blob([JSON.stringify(out, null, 2) + "\n"], { type: "application/json" }), cur.file + ".json");
+    setStatus(n ? `Downloaded events.json and ${n} photos. Put the photos in the photos/ folder and replace content/events.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
   };
   $("#reset").onclick = async () => {
     if (!confirm("Discard your saved draft for this file and go back to the published content?")) return;
