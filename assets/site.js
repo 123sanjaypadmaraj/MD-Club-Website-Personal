@@ -114,9 +114,11 @@ const pages = {
 
   async event() {
     const { events } = await load("events");
+    const setMeta = (sel, attr, key, val) => { let m = document.head.querySelector(sel); if (!m) { m = document.createElement("meta"); m.setAttribute(attr, key); document.head.appendChild(m); } m.setAttribute("content", val); };
     const e = events.find(x => x.slug === new URLSearchParams(location.search).get("e"));
-    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
+    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
     document.title = `${e.name} | MAD Club`;
+    setMeta('meta[name=description]', "name", "description", e.description); setMeta('meta[property="og:title"]', "property", "og:title", `${e.name} | MAD Club`); setMeta('meta[property="og:description"]', "property", "og:description", e.description);
     setMeta('meta[name=description]', "name", "description", e.description);
     setMeta('meta[property="og:title"]', "property", "og:title", `${e.name} | MAD Club`);
     setMeta('meta[property="og:description"]', "property", "og:description", e.description);
@@ -357,7 +359,7 @@ function wireTeam() {
     if (page !== "event" && page !== "events") document.title = (page === "home" ? "" : $("h1", main)?.textContent.replace(/\.$/, "") + " | ") + site.name + " | " + site.college_short;
     document.addEventListener("keydown", e => {
       const d = $("#lb"); if (!d?.open || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-      const shots = $$(".shot", main), n = (+d.dataset.i + (e.key === "ArrowRight" ? 1 : -1) + shots.length) % shots.length, b = shots[n];
+      const shots = $$(".shot:not([hidden])", main), n = (+d.dataset.i + (e.key === "ArrowRight" ? 1 : -1) + shots.length) % shots.length, b = shots[n];
       d.dataset.i = n; $("img", d).src = b.dataset.src; $("img", d).alt = $("img", b)?.alt || "";
     });
     main.addEventListener("error", e => {
@@ -377,7 +379,7 @@ function wireTeam() {
         return;
       }
       const b = e.target.closest(".shot"); if (!b) return;
-      const d = $("#lb"), im = $("img", d), t = $("img", b); im.src = b.dataset.src; im.alt = t?.alt || ""; d.dataset.i = $$(".shot", main).indexOf(b); d.setAttribute("aria-label", "Photo viewer"); d.showModal();
+      const d = $("#lb"), im = $("img", d), t = $("img", b); im.src = b.dataset.src; im.alt = t?.alt || ""; d.dataset.i = $$(".shot:not([hidden])", main).indexOf(b); d.setAttribute("aria-label", "Photo viewer"); d.showModal();
     });
     wirePalette(site, evs); wireMotion(); wirePhone(); wireEvents(); wireContactForm(site); wireTeam(); wireSwarm(); wireDock(site);
     activate();

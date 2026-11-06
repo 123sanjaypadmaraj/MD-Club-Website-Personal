@@ -256,3 +256,4 @@ footer{padding-bottom:104px}
 .draft-banner button{font:inherit;margin:0 .5rem;padding:.15rem .6rem;cursor:pointer}
 .draft-banner a{color:inherit;text-decoration:underline}
 .form-err{color:inherit;border-left:3px solid currentColor;padding:.5rem .75rem;margin-top:1rem}
+.shot[hidden]{display:none}
