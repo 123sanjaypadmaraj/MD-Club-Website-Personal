@@ -148,6 +148,8 @@ a.row:hover .row-main b{color:var(--accent-text)}
 dialog{border:var(--bw) solid var(--line);border-radius:var(--radius);padding:12px;background:var(--bg);color:var(--fg);max-width:min(92vw,1000px)}
 dialog::backdrop{background:rgba(0,0,0,.8)}
 dialog img{max-height:78vh;margin:0 auto 10px}
+dialog.loading img{opacity:.3}
+.lb-err{margin:0 0 10px;text-align:center;color:var(--muted)}
 .lb-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.lb-bar form{margin-left:auto}.lb-count{font:400 .8rem var(--mono);color:var(--muted)}
 @media(max-width:640px){.lb-bar .btn{min-height:44px;min-width:44px}}
 .empty{margin-top:40px;padding:48px 24px;border:var(--bw) dashed var(--line);border-radius:var(--radius);color:var(--muted);text-align:center}
