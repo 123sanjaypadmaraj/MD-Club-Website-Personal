@@ -82,10 +82,59 @@ try {
   for (const s of inMap) if (!slugs.has(s)) errors.push(`sitemap.xml: lists event.html?e=${s} but no such event (update sitemap.xml)`);
 } catch (e) { errors.push("sitemap.xml: cannot read (" + e.message + ")"); }
 
+{
+  const str = v => typeof v === "string" && v.trim() !== "";
+  const pairs = (id, list, keys) => {
+    if (!Array.isArray(list)) { errors.push(`${id} must be an array`); return; }
+    list.forEach((it, i) => { for (const k of keys) if (!str(it?.[k])) errors.push(`${id}[${i}] missing ${k}`); });
+  };
+  const site = docs["site.json"];
+  if (site) {
+    for (const k of ["name", "full_name", "college", "college_short", "established", "tagline", "instagram", "instagram_handle", "hero_title", "hero_lead", "why_title", "why_lead", "cta_title", "cta_text"])
+      if (!str(site[k])) errors.push(`site.json: ${k} missing or not a string`);
+    if (str(site.instagram) && !/^https:\/\//.test(site.instagram)) errors.push("site.json: instagram must start with https://");
+    pairs("site.json: stats", site.stats, ["value", "label"]);
+    pairs("site.json: highlights", site.highlights, ["title", "text"]);
+    pairs("site.json: why", site.why, ["title", "text"]);
+    for (const k of ["who", "objective", "outcomes"]) if (!str(site.about?.[k])) errors.push(`site.json: about.${k} missing or not a string`);
+    pairs("site.json: about.functions", site.about?.functions, ["title", "text"]);
+    if (!str(site.contact?.coordinators)) errors.push("site.json: contact.coordinators missing or not a string");
+    const ep = site.contact?.form_endpoint;
+    if (typeof ep !== "string") errors.push("site.json: contact.form_endpoint must be a string");
+    else if (ep.trim() && !/^https:\/\//.test(ep.trim())) errors.push("site.json: contact.form_endpoint must be empty or start with https://");
+  } else errors.push("site.json: missing");
+  const ach = docs["achievements.json"];
+  if (ach) {
+    pairs("achievements.json: stats", ach.stats, ["value", "label"]);
+    pairs("achievements.json: apps", ach.apps, ["name", "text"]);
+  } else errors.push("achievements.json: missing");
+}
+
 try {
   if (readFileSync(join(root, "admin/cms/config.yml"), "utf8").includes("YOUR_GITHUB_USERNAME"))
     console.warn("warning: admin/cms/config.yml still contains YOUR_GITHUB_USERNAME");
 } catch {}
+
+try {
+  // Local link check: shells, site.js page literals, manifest icons, sitemap pages.
+  const isLocal = u => u && !/^(https?:|\/\/|mailto:|tel:|#|data:|javascript:)/i.test(u);
+  const missing = (src, u) => {
+    const path = u.split("#")[0].split("?")[0].replace(/^\//, "");
+    if (path && !existsSync(join(root, path))) errors.push(`${src}: references missing ${path}`);
+  };
+  for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+    const html = readFileSync(join(root, f), "utf8");
+    for (const m of html.matchAll(/(?:href|src)\s*=\s*"([^"]*)"/g)) if (isLocal(m[1])) missing(f, m[1]);
+  }
+  const js = readFileSync(join(root, "assets/site.js"), "utf8");
+  for (const m of new Set([...js.matchAll(/["'`]([a-z0-9-]+\.html)(?:[?#"'`])/g)].map(m => m[1]))) missing("assets/site.js", m);
+  for (const ic of JSON.parse(readFileSync(join(root, "manifest.webmanifest"), "utf8")).icons || []) if (isLocal(ic.src)) missing("manifest.webmanifest", ic.src);
+  const sm2 = readFileSync(join(root, "sitemap.xml"), "utf8");
+  for (const m of sm2.matchAll(/<loc>\s*https?:\/\/[^/<]+(?:\/[^/<]+)?\/?([^<]*?)\s*<\/loc>/g)) {
+    const page = m[1].split("?")[0].split("#")[0] || "index.html";
+    if (/\.html$/.test(page)) missing("sitemap.xml", page);
+  }
+} catch (e) { errors.push("link check failed (" + e.message + ")"); }
 
 if (errors.length) { console.error(errors.map(e => "error: " + e).join("\n")); process.exit(1); }
 console.log("content ok");
