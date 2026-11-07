@@ -13,7 +13,7 @@ When you add or remove an event, also add or remove its `event.html?e=<slug>` li
 ## One-time setup (for the GitHub editor)
 
 1. Push this folder to a GitHub repo (branch `main`).
-2. The repo is already set to `123sanjaypadmaraj/MD-Club-Website-Personal`. If you rename the repo or account, update `repo`, `site_url` and `display_url` in `admin/cms/config.yml`, plus the canonical tags, `sitemap.xml` and `robots.txt`.
+2. The repo is already set to `123sanjaypadmaraj/MD-Club-Website-Personal`. If you rename the repo or account, update `repo`, `site_url` and `display_url` in `admin/cms/config.yml`, plus the canonical tags, the `og:image` URLs, `sitemap.xml` and `robots.txt`.
 3. Enable Pages: repo Settings, Pages, Source "GitHub Actions" (workflow is included).
 4. Login needs an OAuth step, because GitHub Pages cannot do it alone. Pick one:
    - **Netlify (simplest).** Host the site on Netlify (drag the folder in or connect the repo), then Site settings, Access control, OAuth, Install provider: GitHub (create a GitHub OAuth app with callback `https://api.netlify.com/auth/done`). `/admin/cms/` then works with no other change.
@@ -40,3 +40,4 @@ Ctrl+K (or the Search button) opens a command menu for pages, events and styles.
 
 - Contact form: set "Form endpoint" in the admin to a Formspree URL. Empty shows an Instagram notice instead.
 - Open the site through a web server, not by double-clicking `index.html`, so the browser can read `content/`.
+- Run `node --test scripts/*.test.mjs` to test the content check (uses small fixtures, no npm install).

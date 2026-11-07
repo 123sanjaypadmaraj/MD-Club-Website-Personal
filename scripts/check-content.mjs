@@ -1,10 +1,10 @@
-// Validates content/*.json. Plain Node, no dependencies. Run: node scripts/check-content.mjs
+// Validates content/*.json. Plain Node, no dependencies. Run: node scripts/check-content.mjs [rootDir] [root-dir]
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const errors = [];
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = process.argv[2] ? resolve(process.argv[2]) : fileURLToPath(new URL("..", import.meta.url));
 const dir = join(root, "content");
 const docs = {};
 for (const f of readdirSync(dir).filter(f => f.endsWith(".json"))) {
@@ -111,6 +111,41 @@ try {
 }
 
 try {
+  const { createHash } = await import("node:crypto");
+  for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+    const h = readFileSync(join(root, f), "utf8");
+    const csp = h.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/)?.[1];
+    if (!csp) { errors.push(`${f}: missing Content-Security-Policy meta`); continue; }
+    for (const m of h.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+      const hash = "'sha256-" + createHash("sha256").update(m[1]).digest("base64") + "'";
+      if (!csp.includes(hash)) errors.push(`${f}: inline script hash ${hash} not in its Content-Security-Policy (recompute it)`);
+    }
+  }
+  const htmls = readdirSync(root).filter(f => f.endsWith(".html"));
+  const walkAdmin = d => existsSync(join(root, d)) ? readdirSync(join(root, d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? walkAdmin(d + "/" + e.name) : e.name.endsWith(".html") ? [d + "/" + e.name] : []) : [];
+  for (const f of [...htmls, ...walkAdmin("admin")]) {
+    const h = readFileSync(join(root, f), "utf8");
+    for (const m of h.matchAll(/<script\b[^>]*\ssrc=["'](https?:\/\/[^"']+)["'][^>]*>/gi))
+      if (!/\sintegrity=/i.test(m[0])) errors.push(`${f}: external script ${m[1]} has no integrity attribute`);
+  }
+} catch (e) { errors.push("CSP check failed: " + e.message); }
+
+try {
+  const sm = (() => { try { return readFileSync(join(root, "sitemap.xml"), "utf8"); } catch { return ""; } })();
+  const smBase = sm.match(/<loc>\s*(https?:\/\/[^<\s]*?\/)[^/<]*<\/loc>/)?.[1];
+  for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+    const h = readFileSync(join(root, f), "utf8");
+    const img = h.match(/<meta property="og:image" content="([^"]*)"/)?.[1];
+    if (!img) continue;
+    const url = h.match(/<meta property="og:url" content="([^"]*)"/)?.[1] || h.match(/<link rel="canonical" href="([^"]*)"/)?.[1];
+    const base = url ? url.replace(/[^/]*$/, "") : smBase;
+    if (!base || !img.startsWith(base)) { errors.push(f + ": og:image " + img + " does not start with the site base URL " + base); continue; }
+    const p = img.slice(base.length);
+    if (!existsSync(join(root, p))) errors.push(f + ": og:image references missing " + p);
+  }
+} catch (e) { errors.push("og:image check failed: " + e.message); }
+
+try {
   if (readFileSync(join(root, "admin/cms/config.yml"), "utf8").includes("YOUR_GITHUB_USERNAME"))
     console.warn("warning: admin/cms/config.yml still contains YOUR_GITHUB_USERNAME");
 } catch {}
@@ -123,8 +158,8 @@ try {
     if (path && !existsSync(join(root, path))) errors.push(`${src}: references missing ${path}`);
   };
   for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
-    const html = readFileSync(join(root, f), "utf8");
-    for (const m of html.matchAll(/(?:href|src)\s*=\s*"([^"]*)"/g)) if (isLocal(m[1])) missing(f, m[1]);
+    const html = readFileSync(join(root, f), "utf8").replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi, "");
+    for (const m of html.matchAll(/(?:href|src)\s*=\s*"([^"]*)"/g)) if (isLocal(m[1])) missing(f, m[1]);
   }
   const js = readFileSync(join(root, "assets/site.js"), "utf8");
   for (const m of new Set([...js.matchAll(/["'`]([a-z0-9-]+\.html)(?:[?#"'`])/g)].map(m => m[1]))) missing("assets/site.js", m);
