@@ -103,3 +103,20 @@ test("og:image that exists passes", () => {
   const r = run(f => { f["index.html"] = page('<meta property="og:url" content="' + BASE + '"><meta property="og:image" content="' + BASE + 'photos/ev1/1.jpg">'); });
   assert.strictEqual(r.code, 0, r.out);
 });
+
+// Editor coverage: every top-level content key must be editable in admin/admin.js and admin/cms/config.yml.
+const withEditors = (adminKeys, cmsKeys) => f => {
+  f["admin/admin.js"] = "const str = 1;\nconst TABS = [\n" + [
+    ["events", ["events"]], ["site", adminKeys.site], ["team", adminKeys.team], ["achievements", adminKeys.achievements]
+  ].map(([file, ks]) => `  { id: "${file}", label: "L", file: "${file}", defs: [${ks.map(k => `str("${k}", "L")`).join(", ")}] },`).join("\n") + "\n];\n";
+  const block = (file, ks) => `      - name: ${file}\n        file: content/${file}.json\n        fields:\n${ks.map(k => `          - { name: ${k}, label: L, widget: string }`).join("\n")}\n`;
+  f["admin/cms/config.yml"] = "collections:\n  - name: pages\n    files:\n" + block("events", ["events"]) + block("site", cmsKeys.site) + block("team", cmsKeys.team) + block("achievements", cmsKeys.achievements);
+};
+const SITE_KEYS = ["name", "full_name", "college", "college_short", "established", "tagline", "instagram", "instagram_handle", "hero_title", "hero_lead", "why_title", "why_lead", "cta_title", "cta_text", "stats", "highlights", "why", "about", "contact"];
+const ALL = { site: SITE_KEYS, team: ["current_year", "current", "earlier", "galleries"], achievements: ["stats", "apps"] };
+test("editors that cover every content key pass", () => {
+  const r = run(withEditors(ALL, ALL));
+  assert.strictEqual(r.code, 0, r.out);
+});
+test("content key missing from admin.js", () => fails(run(withEditors({ ...ALL, team: ["current_year", "current", "earlier"] }, ALL)), /team\.json key "galleries" is not editable in admin\/admin\.js/));
+test("content key missing from config.yml", () => fails(run(withEditors(ALL, { ...ALL, achievements: ["stats"] })), /achievements\.json key "apps" is not editable in admin\/cms\/config\.yml/));

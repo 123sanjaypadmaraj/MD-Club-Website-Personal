@@ -171,5 +171,45 @@ try {
   }
 } catch (e) { errors.push("link check failed (" + e.message + ")"); }
 
+// Every top-level content key must be editable in both /admin/ and Decap (skipped when the editor files are absent).
+try {
+  const adm = join(root, "admin/admin.js"), cfg = join(root, "admin/cms/config.yml");
+  if (existsSync(adm) && existsSync(cfg)) {
+    const tabsText = readFileSync(adm, "utf8").split("const TABS = [")[1]?.split(/\r?\n\];/)[0];
+    if (tabsText === undefined) errors.push("admin/admin.js: cannot find const TABS");
+    else {
+      const mk = t => (key) => ({ t, key });
+      const tabs = new Function("str", "txt", "list", "pair", "data", "return [" + tabsText + "]")(mk("string"), mk("text"), mk("list"), [], {});
+      const inAdmin = {};
+      for (const t of tabs) for (const d of t.defs || []) (inAdmin[t.file] ||= new Set()).add(d.key);
+      const inCms = {};
+      const lines = readFileSync(cfg, "utf8").split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        const fm = lines[i].match(/^\s*file:\s*content\/([\w-]+)\.json\s*$/);
+        if (!fm) continue;
+        const names = (inCms[fm[1]] ||= new Set());
+        let j = i + 1;
+        while (j < lines.length && !/^\s*fields:\s*$/.test(lines[j])) j++;
+        const ind = n => lines[n].match(/^\s*/)[0].length;
+        const first = j + 1;
+        if (first >= lines.length) continue;
+        const base = ind(first);
+        for (let k = first; k < lines.length; k++) {
+          if (!lines[k].trim()) continue;
+          if (ind(k) < base) break;
+          if (ind(k) === base) { const nm = lines[k].match(/^\s*-\s*(?:\{\s*)?name:\s*([\w-]+)/); if (nm) names.add(nm[1]); }
+        }
+      }
+      for (const [f, doc] of Object.entries(docs)) {
+        const base = f.replace(/\.json$/, "");
+        for (const k of Object.keys(doc || {})) {
+          if (!inAdmin[base]?.has(k)) errors.push(`content/${f} key "${k}" is not editable in admin/admin.js`);
+          if (!inCms[base]?.has(k)) errors.push(`content/${f} key "${k}" is not editable in admin/cms/config.yml`);
+        }
+      }
+    }
+  }
+} catch (e) { errors.push("editor coverage check failed (" + e.message + ")"); }
+
 if (errors.length) { console.error(errors.map(e => "error: " + e).join("\n")); process.exit(1); }
 console.log("content ok");
