@@ -120,3 +120,8 @@ test("editors that cover every content key pass", () => {
 });
 test("content key missing from admin.js", () => fails(run(withEditors({ ...ALL, team: ["current_year", "current", "earlier"] }, ALL)), /team\.json key "galleries" is not editable in admin\/admin\.js/));
 test("content key missing from config.yml", () => fails(run(withEditors(ALL, { ...ALL, achievements: ["stats"] })), /achievements\.json key "apps" is not editable in admin\/cms\/config\.yml/));
+
+const skinPage = list => page("<p>e</p>", `try{var k=localStorage.getItem("skin");document.documentElement.dataset.skin=/^(${list})$/.test(k)?k:"nebula"}catch(e){}`);
+const skinSite = 'const a = "event.html"; const SKINS = [["nebula","Nebula"],["ocean","Ocean"]];';
+test("inline skin list that does not match SKINS fails", () => fails(run(f => { f["assets/site.js"] = skinSite; f["index.html"] = skinPage("nebula|ocean|solar"); }), /does not match SKINS/));
+test("inline skin list matching SKINS passes", () => { const r = run(f => { f["assets/site.js"] = skinSite; f["index.html"] = skinPage("ocean|nebula"); f["assets/style.css"] = ":root[data-skin=nebula]{}:root[data-skin=ocean]{}"; }); assert.strictEqual(r.code, 0, r.out); });

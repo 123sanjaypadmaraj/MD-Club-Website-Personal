@@ -130,6 +130,24 @@ try {
   }
 } catch (e) { errors.push("CSP check failed: " + e.message); }
 
+// The inline <head> skin script hard-codes the skin list: keep it in sync with SKINS in site.js and style.css.
+try {
+  const js = readFileSync(join(root, "assets/site.js"), "utf8");
+  const keys = ((js.match(/const SKINS = \[(.*)\];/) || [])[1] || "").match(/\["([a-z]+)"/g)?.map(m => m.slice(2, -1));
+  if (keys) {
+    const css = existsSync(join(root, "assets/style.css")) ? readFileSync(join(root, "assets/style.css"), "utf8") : null;
+    if (css) for (const k of keys) if (!css.includes(`:root[data-skin=${k}]`)) errors.push(`assets/style.css: no :root[data-skin=${k}] rule for skin "${k}" in SKINS`);
+    const want = [...keys].sort().join("|");
+    for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+      const h = readFileSync(join(root, f), "utf8");
+      for (const m of h.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+        const list = m[1].match(/\/\^\(([a-z|]+)\)\$\/\.test\(k\)/)?.[1];
+        if (list !== undefined && list.split("|").sort().join("|") !== want) errors.push(`${f}: inline skin list "${list}" does not match SKINS in assets/site.js`);
+      }
+    }
+  }
+} catch {}
+
 try {
   const sm = (() => { try { return readFileSync(join(root, "sitemap.xml"), "utf8"); } catch { return ""; } })();
   const smBase = sm.match(/<loc>\s*(https?:\/\/[^<\s]*?\/)[^/<]*<\/loc>/)?.[1];
