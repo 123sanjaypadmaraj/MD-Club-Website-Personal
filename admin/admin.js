@@ -1,6 +1,9 @@
 // Testing admin: admin/admin login, schema-driven forms, live preview.
 // Edits are saved to localStorage ("mad_content_<file>"), which the site reads in this browser.
 // To publish for everyone, download the JSON and replace the file in content/ (or use the GitHub editor in admin/cms/).
+addEventListener("error", e => { document.documentElement.dataset.jsError = String(e.message || e.error).slice(0, 200); });
+addEventListener("unhandledrejection", e => { document.documentElement.dataset.jsError = String(e.reason && e.reason.message || e.reason).slice(0, 200); });
+document.addEventListener("securitypolicyviolation", e => { document.documentElement.dataset.cspViolation = e.violatedDirective; });
 const USER = "admin", PASS = "admin";
 const $ = (s, el = document) => el.querySelector(s);
 const KEY = n => "mad_content_" + n;

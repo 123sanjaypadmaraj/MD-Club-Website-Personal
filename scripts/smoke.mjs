@@ -1,7 +1,8 @@
 // Headless-Chrome smoke test of every page. Plain Node 20, no dependencies.
 // Run: node scripts/smoke.mjs   (set CHROME to the browser path if needed)
 import { createServer } from "node:http";
-import { readFileSync, existsSync, statSync } from "node:fs";
+import { readFileSync, existsSync, statSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, extname, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
@@ -16,8 +17,12 @@ if (!chrome) {
   process.exit(process.env.CI ? 1 : 0);
 }
 
+// Virtual pages served from memory (no repo file): they drive the admin editor inside an iframe.
+const VIRTUAL = {};
 const server = createServer((req, res) => {
   const p = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^[/\\]+/, "") || "index.html";
+  const vp = p.split(sep).join("/");
+  if (VIRTUAL[vp]) { res.writeHead(200, { "Content-Type": TYPES[".html"] }); res.end(VIRTUAL[vp]); return; }
   const f = join(root, p);
   if (!f.startsWith(root) || f.split(sep).includes(".git") || !existsSync(f) || !statSync(f).isFile()) { res.writeHead(404); res.end("not found"); return; }
   res.writeHead(200, { "Content-Type": TYPES[extname(f).toLowerCase()] || "application/octet-stream" });
@@ -77,12 +82,62 @@ if (events.length) {
   }]);
   if (events.length < 3) console.log("note: fewer than 3 events, skipping Older/Newer check");
 }
+// Admin editor: login view, then every tab renders fields without errors.
+const adminTabs = [...readFileSync(join(root, "admin/admin.js"), "utf8").split("const TABS = [")[1].split(/\r?\n\];/)[0].matchAll(/^  \{ id: "([^"]+)"/gm)].map(m => m[1]);
+const ADMIN = "admin/index.html", ADMIN_TABS = "__smoke/admin-tabs.html";
+const EXEMPT = new Set([ADMIN, ADMIN_TABS]);
+VIRTUAL[ADMIN_TABS] = `<!doctype html><meta charset="utf-8"><body><ol id="out"></ol><script>
+try { sessionStorage.setItem("mad_admin", "1"); } catch {}
+const f = document.createElement("iframe"); f.src = "../admin/index.html"; document.body.append(f);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const d = () => f.contentDocument;
+  for (let i = 0; i < 40 && !(d() && d().querySelector("#tabs button")); i++) await sleep(100);
+  const out = document.getElementById("out");
+  for (const b of [...d().querySelectorAll("#tabs button")]) {
+    b.click(); await sleep(300);
+    const li = document.createElement("li");
+    li.dataset.tab = b.dataset.id; li.dataset.fields = d().querySelectorAll("#form .field").length;
+    li.dataset.err = d().documentElement.dataset.jsError || "";
+    out.append(li);
+  }
+  document.body.insertAdjacentHTML("beforeend", '<p id="done">done</p>');
+})();
+<\/script>`;
+if (adminTabs.length) {
+  extra.push([ADMIN, out => !/<div[^>]*id="login"(?![^>]*\shidden)[^>]*>/.test(out) ? "login view not shown" : ""]);
+  extra.push([ADMIN_TABS, out => {
+    if (!out.includes('id="done"')) return "admin tabs page never finished";
+    const lis = [...out.matchAll(/<li[^>]*data-tab="([^"]*)"[^>]*>/g)].map(m => m[0]);
+    const bad = adminTabs.map(id => { const li = lis.find(l => l.includes(`data-tab="${id}"`)); const n = li && +(li.match(/data-fields="(\d+)"/) || [])[1]; const er = li && (li.match(/data-err="([^"]*)"/) || [])[1];
+      return !li ? `tab ${id} missing` : er ? `tab ${id} error: ${er}` : !(n >= 1) ? `tab ${id} has no fields` : ""; }).filter(Boolean);
+    return bad.join("; ");
+  }]);
+} else console.log("note: could not read admin TABS, skipping admin checks");
+// Admin drafts in localStorage must override the published JSON. Runs in a throwaway profile so the draft cannot leak.
+const DRAFT = "__smoke/draft.html", DRAFT_NAME = "Smoke Draft Zqxjv";
+const FRESH = new Set([DRAFT]);
+if (events.length) {
+  VIRTUAL[DRAFT] = `<!doctype html><meta charset="utf-8"><body><script>
+fetch("../content/events.json").then(r => r.json()).then(d => {
+  d.events[0].name = ${JSON.stringify(DRAFT_NAME)};
+  localStorage.setItem("mad_content_events", JSON.stringify(d));
+  location.replace("../events.html");
+});
+<\/script>`;
+  extra.push([DRAFT, out => !out.includes(DRAFT_NAME) ? "draft event name not shown on events.html" : !out.includes(`${events.length} of ${events.length} events`) ? `expected "${events.length} of ${events.length} events"` : ""]);
+  extra.push(["events.html", out => out.includes(DRAFT_NAME) ? "draft leaked into a normal profile" : ""]);
+}
 const extraPred = new Map(extra);
 const urls = [...new Set([...pages, ...events.map(e => `event.html?e=${e.slug}`), ...extra.map(x => x[0]), ...process.argv.slice(2)])];
 
 const dump = url => new Promise(resolve => {
-  execFile(chrome, ["--headless=new", "--disable-gpu", "--no-sandbox", "--virtual-time-budget=5000", "--dump-dom", base + url],
-    { maxBuffer: 64 * 1024 * 1024, timeout: 60000 }, (err, out) => resolve({ err, out: out || "" }));
+  const prof = FRESH.has(url) ? mkdtempSync(join(tmpdir(), "smoke-")) : null;
+  execFile(chrome, ["--headless=new", "--disable-gpu", "--no-sandbox", "--virtual-time-budget=5000", ...(prof ? ["--user-data-dir=" + prof] : []), "--dump-dom", base + url],
+    { maxBuffer: 64 * 1024 * 1024, timeout: 60000 }, (err, out) => {
+      if (prof) setTimeout(() => rmSync(prof, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }), 500);
+      resolve({ err, out: out || "" });
+    });
 });
 
 const team = JSON.parse(readFileSync(join(root, "content/team.json"), "utf8"));
@@ -93,13 +148,13 @@ for (const u of urls) {
   const { err, out } = await dump(u);
   const why = [];
   if (err) why.push("chrome error: " + err.message.split("\n")[0]);
-  if (!out.includes("<h1") && u !== "404.html") why.push("no <h1");
+  if (!out.includes("<h1") && u !== "404.html" && !EXEMPT.has(u)) why.push("no <h1");
   if (u === "404.html" && !out.includes("<h1")) why.push("no <h1");
   const htmlTag = (out.match(/<html[^>]*>/i) || [""])[0];
   const attr = n => (htmlTag.match(new RegExp("data-" + n + '="([^"]*)"')) || [])[1];
   if (attr("js-error") !== undefined) why.push("JS error: " + attr("js-error"));
   if (attr("csp-violation") !== undefined) why.push("CSP violation: " + attr("csp-violation"));
-  if (attr("ready") !== "1") why.push("page never finished rendering (no data-ready)");
+  if (attr("ready") !== "1" && !EXEMPT.has(u)) why.push("page never finished rendering (no data-ready)");
   if (u === "events.html" && !out.includes(`${events.length} of ${events.length} events`)) why.push(`expected "${events.length} of ${events.length} events"`);
   if (u === "team.html" && (out.match(/class="shot"/g) || []).length !== shots) why.push(`expected ${shots} photo buttons`);
   const pred = extraPred.get(u); if (pred) { const m = pred(out); if (m) why.push(m); }
