@@ -151,7 +151,7 @@ function images(def, obj, onChange) {
     th.innerHTML = "";
     obj[def.key].forEach((src, n) => {
       const d = document.createElement("div"); d.className = "thumb";
-      const im = new Image(); im.src = src; im.alt = "";
+      const im = new Image(); im.src = /^(data:|https?:|[/])/.test(src) ? src : "../" + src; im.alt = "";
       const b = document.createElement("button"); b.type = "button"; b.textContent = "Remove";
       b.onclick = () => { obj[def.key].splice(n, 1); draw(); onChange(); };
       d.append(im, b); th.append(d);

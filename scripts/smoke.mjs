@@ -3,11 +3,12 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync, statSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, extname, normalize, sep } from "node:path";
+import { join, extname, normalize, sep, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+// SMOKE_ROOT lets CI test the staged _site folder instead of the repo root.
+const root = join(resolve(process.env.SMOKE_ROOT || fileURLToPath(new URL("..", import.meta.url))), sep);
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".xml": "application/xml", ".txt": "text/plain" };
 
 const chrome = [process.env.CHROME, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"]
@@ -19,12 +20,13 @@ if (!chrome) {
 
 // Virtual pages served from memory (no repo file): they drive the admin editor inside an iframe.
 const VIRTUAL = {};
+let missing404 = new Set();
 const server = createServer((req, res) => {
   const p = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^[/\\]+/, "") || "index.html";
   const vp = p.split(sep).join("/");
   if (VIRTUAL[vp]) { res.writeHead(200, { "Content-Type": TYPES[".html"] }); res.end(VIRTUAL[vp]); return; }
   const f = join(root, p);
-  if (!f.startsWith(root) || f.split(sep).includes(".git") || !existsSync(f) || !statSync(f).isFile()) { res.writeHead(404); res.end("not found"); return; }
+  if (!f.startsWith(root) || f.split(sep).includes(".git") || !existsSync(f) || !statSync(f).isFile()) { missing404.add("/" + p.split(sep).join("/")); res.writeHead(404); res.end("not found"); return; }
   res.writeHead(200, { "Content-Type": TYPES[extname(f).toLowerCase()] || "application/octet-stream" });
   res.end(readFileSync(f));
 });
@@ -161,8 +163,11 @@ const shots = (team.galleries || []).reduce((n, g) => n + (g.photos || []).lengt
 
 let failed = 0;
 for (const u of urls) {
+  missing404 = new Set();
   const { err, out } = await dump(u);
   const why = [];
+  const gone = [...missing404].map(x => x.replace(/^\//, "")).filter(x => x !== "favicon.ico");
+  if (gone.length) why.push(gone.slice(0, 5).map(x => "404: " + x).join("; "));
   if (err) why.push("chrome error: " + err.message.split("\n")[0]);
   if (!out.includes("<h1") && u !== "404.html" && !EXEMPT.has(u)) why.push("no <h1");
   if (u === "404.html" && !out.includes("<h1")) why.push("no <h1");
