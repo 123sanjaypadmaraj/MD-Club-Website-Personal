@@ -56,8 +56,29 @@ if (years.length >= 2) {
 } else console.log("note: fewer than 2 event years, skipping ?y= check");
 extra.push(["events.html?y=99-00", out => !out.includes(`${events.length} of ${events.length} events`) ? `expected "${events.length} of ${events.length} events"` : !pressed(out, "all") ? "All chip not pressed" : ""]);
 extra.push(["events.html?q=zqxjv", out => !out.includes(`0 of ${events.length} events`) ? `expected "0 of ${events.length} events"` : !out.includes("No events match") ? "missing No events match" : ""]);
+// Event page: unknown slug, per-event title/og:title, Older/Newer nav.
+const NOSLUG = "event.html?e=zqxjv-no-such-event";
+const htmlEsc = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+extra.push([NOSLUG, out => !out.includes("Event not found") ? "missing Event not found"
+  : !/<meta(?=[^>]*name="robots")(?=[^>]*content="noindex")[^>]*>/.test(out) ? "missing noindex robots meta"
+  : !out.includes("<title>Event not found | MAD Club</title>") ? "wrong not-found title" : ""]);
+if (events.length) {
+  const e0 = events[0], t0 = htmlEsc(`${e0.name} | MAD Club`);
+  extra.push([`event.html?e=${e0.slug}`, out => {
+    if (!out.includes(`<title>${t0}</title>`)) return `expected <title>${t0}</title>`;
+    if (!(out.match(/<meta[^>]*>/g) || []).some(m => m.includes('property="og:title"') && m.includes(`content="${t0}"`))) return "og:title does not match the event title";
+    if (events.length >= 3) {
+      const nav = (out.match(/<nav[^>]*aria-label="More events"[^>]*>[\s\S]*?<\/nav>/) || [])[0];
+      if (!nav) return "missing More events nav";
+      const slugs = [...nav.matchAll(/href="event\.html\?e=([^"]+)"/g)].map(m => decodeURIComponent(m[1]));
+      if (!slugs.length || slugs.some(s => s === e0.slug || !events.some(e => e.slug === s))) return `bad More events links: ${slugs.join(", ")}`;
+    }
+    return "";
+  }]);
+  if (events.length < 3) console.log("note: fewer than 3 events, skipping Older/Newer check");
+}
 const extraPred = new Map(extra);
-const urls = [...pages, ...events.map(e => `event.html?e=${e.slug}`), ...[...new Set(extra.map(x => x[0]))], ...process.argv.slice(2)];
+const urls = [...new Set([...pages, ...events.map(e => `event.html?e=${e.slug}`), ...extra.map(x => x[0]), ...process.argv.slice(2)])];
 
 const dump = url => new Promise(resolve => {
   execFile(chrome, ["--headless=new", "--disable-gpu", "--no-sandbox", "--virtual-time-budget=5000", "--dump-dom", base + url],
@@ -83,7 +104,7 @@ for (const u of urls) {
   if (u === "team.html" && (out.match(/class="shot"/g) || []).length !== shots) why.push(`expected ${shots} photo buttons`);
   const pred = extraPred.get(u); if (pred) { const m = pred(out); if (m) why.push(m); }
   if (out.includes("Could not load content")) why.push("Could not load content");
-  if (u.startsWith("event.html?e=") && out.includes("Event not found")) why.push("Event not found");
+  if (u.startsWith("event.html?e=") && u !== NOSLUG && out.includes("Event not found")) why.push("Event not found");
   if (why.length) { failed++; console.log(`FAIL ${u}: ${why.join("; ")}`); } else console.log(`ok   ${u}`);
 }
 server.close();
