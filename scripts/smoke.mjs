@@ -128,6 +128,22 @@ fetch("../content/events.json").then(r => r.json()).then(d => {
   extra.push([DRAFT, out => !out.includes(DRAFT_NAME) ? "draft event name not shown on events.html" : !out.includes(`${events.length} of ${events.length} events`) ? `expected "${events.length} of ${events.length} events"` : ""]);
   extra.push(["events.html", out => out.includes(DRAFT_NAME) ? "draft leaked into a normal profile" : ""]);
 }
+// ?skin= for every skin (keys from SKINS in site.js, --bg from style.css) plus the unknown-skin fallback.
+const siteJs = readFileSync(join(root, "assets/site.js"), "utf8"), styleCss = readFileSync(join(root, "assets/style.css"), "utf8");
+const skinKeys = [...((siteJs.match(/const SKINS = \[(.*)\];/) || [])[1] || "").matchAll(/\["([a-z]+)"/g)].map(m => m[1]);
+const metaTheme = out => ((out.match(/<meta[^>]*>/g) || []).find(m => m.includes('name="theme-color"')) || "").match(/content="([^"]*)"/)?.[1] || "";
+const btnPressed = (out, k) => (out.match(/<button[^>]*>/g) || []).some(b => b.includes(`data-skin="${k}"`) && b.includes('aria-pressed="true"'));
+const htmlSkin = out => ((out.match(/<html[^>]*>/i) || [""])[0].match(/data-skin="([^"]*)"/) || [])[1];
+for (const k of skinKeys) {
+  const bg = (styleCss.match(new RegExp(":root[[]data-skin=" + k + "[\\]][{]--bg:(#[0-9a-fA-F]{3,8})")) || [])[1];
+  extra.push([`about.html?skin=${k}`, out => !bg ? `no --bg rule for skin ${k} in style.css` : htmlSkin(out) !== k ? `expected data-skin="${k}", got "${htmlSkin(out)}"`
+    : !btnPressed(out, k) ? `skin button ${k} not pressed` : metaTheme(out).toLowerCase() !== bg.toLowerCase() ? `theme-color "${metaTheme(out)}" does not match ${k} --bg ${bg}` : ""]);
+}
+if (skinKeys.length >= 2) {
+  extra.push(["about.html?skin=zqxjv", out => htmlSkin(out) !== "nebula" ? `unknown skin should fall back to nebula, got "${htmlSkin(out)}"` : ""]);
+  const k2 = skinKeys[1];
+  if (events.length) extra.push([`events.html?skin=${k2}&y=${semYear(events[0])}`, out => htmlSkin(out) !== k2 ? `skin ${k2} lost after the year filter, got "${htmlSkin(out)}"` : ""]);
+} else console.log("note: could not read SKINS, skipping ?skin= checks");
 const extraPred = new Map(extra);
 const urls = [...new Set([...pages, ...events.map(e => `event.html?e=${e.slug}`), ...extra.map(x => x[0]), ...process.argv.slice(2)])];
 
