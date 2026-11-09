@@ -1,20 +1,136 @@
 {
   "current_year": "2025-26",
   "current": [
-    { "name": "Sujay K", "role": "President" },
-    { "name": "Manushree M", "role": "Vice President" },
-    { "name": "Sathvikha Manish", "role": "Secretary" },
-    { "name": "Marylin Nithika", "role": "Treasurer" },
-    { "name": "Hari Prasad S", "role": "Program Committee Chair" },
-    { "name": "Prajna R", "role": "Program Committee Vice Chair" },
-    { "name": "Poojitha Subramanyam", "role": "Project Committee Chair" },
-    { "name": "Rajeev Sharma", "role": "Project Committee Vice Chair" },
-    { "name": "Mohammed Faidh", "role": "Marketing Committee Chair" },
-    { "name": "Mrinal Satheesh", "role": "Marketing Committee Vice Chair" },
-    { "name": "Sanjay Padmaraj", "role": "Review Committee Chair" }
+    {
+      "name": "Sujay K",
+      "role": "President"
+    },
+    {
+      "name": "Manushree M",
+      "role": "Vice President"
+    },
+    {
+      "name": "Sathvikha Manish",
+      "role": "Secretary"
+    },
+    {
+      "name": "Marylin Nithika",
+      "role": "Treasurer"
+    },
+    {
+      "name": "Hari Prasad S",
+      "role": "Program Committee Chair"
+    },
+    {
+      "name": "Prajna R",
+      "role": "Program Committee Vice Chair"
+    },
+    {
+      "name": "Poojitha Subramanyam",
+      "role": "Project Committee Chair"
+    },
+    {
+      "name": "Rajeev Sharma",
+      "role": "Project Committee Vice Chair"
+    },
+    {
+      "name": "Mohammed Faidh",
+      "role": "Marketing Committee Chair"
+    },
+    {
+      "name": "Mrinal Satheesh",
+      "role": "Marketing Committee Vice Chair"
+    },
+    {
+      "name": "Sanjay Padmaraj",
+      "role": "Review Committee Chair"
+    }
   ],
   "earlier": [
-    { "name": "Chiranjeevi", "role": "President", "year": "2024-25" },
-    { "name": "Likitha K", "role": "Vice President", "year": "2024-25" }
+    {
+      "name": "Chiranjeevi",
+      "role": "President",
+      "year": "2024-25"
+    },
+    {
+      "name": "Likitha K",
+      "role": "Vice President",
+      "year": "2024-25"
+    }
+  ],
+  "galleries": [
+    {
+      "label": "Team 2026-27",
+      "photos": [
+        "photos/team/26-27/1.png",
+        "photos/team/26-27/2.png",
+        "photos/team/26-27/3.png",
+        "photos/team/26-27/4.png",
+        "photos/team/26-27/5.png",
+        "photos/team/26-27/6.png",
+        "photos/team/26-27/7.png",
+        "photos/team/26-27/8.png",
+        "photos/team/26-27/9.png",
+        "photos/team/26-27/10.png",
+        "photos/team/26-27/11.png"
+      ]
+    },
+    {
+      "label": "Team 2025-26",
+      "photos": [
+        "photos/team/25-26/1.jpeg",
+        "photos/team/25-26/2.png",
+        "photos/team/25-26/3.png",
+        "photos/team/25-26/4.png",
+        "photos/team/25-26/5.png",
+        "photos/team/25-26/6.png",
+        "photos/team/25-26/7.png",
+        "photos/team/25-26/8.png",
+        "photos/team/25-26/9.png",
+        "photos/team/25-26/10.png",
+        "photos/team/25-26/11.png",
+        "photos/team/25-26/12.png"
+      ]
+    },
+    {
+      "label": "Team 2024-25",
+      "photos": [
+        "photos/team/24-25/1.jpg",
+        "photos/team/24-25/2.png",
+        "photos/team/24-25/3.png",
+        "photos/team/24-25/4.png",
+        "photos/team/24-25/5.png",
+        "photos/team/24-25/6.png",
+        "photos/team/24-25/7.png",
+        "photos/team/24-25/8.png",
+        "photos/team/24-25/9.png",
+        "photos/team/24-25/10.png",
+        "photos/team/24-25/11.png",
+        "photos/team/24-25/12.png"
+      ]
+    },
+    {
+      "label": "Team 2023-24",
+      "photos": [
+        "photos/team/23-24/1.jpg",
+        "photos/team/23-24/2.png",
+        "photos/team/23-24/3.png",
+        "photos/team/23-24/4.png",
+        "photos/team/23-24/5.png",
+        "photos/team/23-24/6.png",
+        "photos/team/23-24/7.png",
+        "photos/team/23-24/8.png",
+        "photos/team/23-24/9.png",
+        "photos/team/23-24/10.png",
+        "photos/team/23-24/11.png",
+        "photos/team/23-24/12.png"
+      ]
+    },
+    {
+      "label": "Investiture",
+      "photos": [
+        "photos/team/investiture/1.jpg"
+      ]
+    }
   ]
 }

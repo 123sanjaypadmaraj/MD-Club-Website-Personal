@@ -1,4 +1,7 @@
 // MAD Club site renderer: every page is built from content/*.json (edited via /admin).
+addEventListener("error", e => { document.documentElement.dataset.jsError = String(e.message || e.error).slice(0, 200); });
+addEventListener("unhandledrejection", e => { document.documentElement.dataset.jsError = String(e.reason && e.reason.message || e.reason).slice(0, 200); });
+document.addEventListener("securitypolicyviolation", e => { document.documentElement.dataset.cspViolation = e.violatedDirective; });
 const NAV = [["index.html","Home"],["events.html","Events"],["about.html","About"],["achievements.html","Achievements"],["team.html","Team"],["contact.html","Contact"]];
 const SKINS = [["nebula","Nebula"],["ocean","Ocean"],["aurora","Aurora"],["solar","Solar"]];
 const skinOk = k => SKINS.some(s => s[0] === k) ? k : "nebula";
@@ -13,6 +16,7 @@ const loadRaw = n => {
   try { const d = localStorage.getItem("mad_content_" + n); if (d) return Promise.resolve(JSON.parse(d)); } catch {}
   return fetch(`content/${n}.json`).then(r => { if (!r.ok) throw new Error(n); return r.json(); });
 };
+const NOPHOTOS = () => "No photos yet." + (draftKeys().length ? " Add them in the admin panel under Events." : "");
 const draftKeys = () => { try { return Object.keys(localStorage).filter(k => k.startsWith("mad_content_")); } catch { return []; } };
 // Photo paths from the CMS may be root-absolute (/photos/x.jpg); pages live at the site root, so make them relative.
 const photoSrc = p => /^(data:|https?:|\/\/)/i.test(p) ? p : String(p).replace(/^\/+/, "");
@@ -106,7 +110,7 @@ const pages = {
     const { events } = await load("events");
     const years = [...new Set(events.map(e => semYear(e.semester)))].sort().reverse();
     const qp = new URLSearchParams(location.search), y0 = qp.get("y");
-    window.__ev = { events, y: years.includes(y0) ? y0 : "all", q: "" };
+    window.__ev = { events, y: years.includes(y0) ? y0 : "all", q: qp.get("q") || "" };
     return head("Events", "Everything we have run.", "Search every event, newest first. Open one for its photos.") +
       `<div class="wrap tools"><label class="search"><span class="sr">Search events</span><input id="q" type="search" placeholder="Search events, e.g. hack, UI, git" autocomplete="off"></label>
 <div class="chips" id="chips"><button class="chip" data-y="all">All</button>${years.map(y => `<button class="chip" data-y="${y}">20${y.replace("-", "-20")}</button>`).join("")}</div><p class="count" id="count" aria-live="polite"></p></div>
@@ -125,8 +129,8 @@ const pages = {
     const ord = [...events].sort((x, y) => semKey(y.semester) - semKey(x.semester)), i = ord.indexOf(e);
     const lk = (ev, t) => ev ? `<a class="btn" href="event.html?e=${encodeURIComponent(ev.slug)}">${t}: ${esc(ev.name)}</a>` : "";
     const evNav = ord.length > 1 ? `<nav class="back" aria-label="More events">${lk(ord[i + 1], "Older")}${lk(ord[i - 1], "Newer")}</nav>` : "";
-    return head(e.semester, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(e.name)}, photo ${i + 1}"></button>`).join("")}</div>` : `<div class="empty">No photos yet. Add them in the admin panel under Events.</div>`}
-<p class="back"><a class="btn" href="events.html">All events</a> <button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>${evNav}</div><dialog id="lb"><img alt=""><form method="dialog"><button class="btn">Close</button></form></dialog>`;
+    return head(e.semester, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(e.name)}, photo ${i + 1}"></button>`).join("")}</div>` : `<div class="empty">${NOPHOTOS()}</div>`}
+<p class="back"><a class="btn" href="events.html">All events</a> <button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>${evNav}</div>`;
   },
 
   async about(site) {
@@ -154,7 +158,8 @@ const pages = {
     return head("The team", "The people behind MAD.") +
       `<div class="wrap tools"><div class="chips" id="tchips"><button class="chip" data-g="all" aria-pressed="true">All</button>${groups.map(g => `<button class="chip" data-g="${g}" aria-pressed="false">${g}</button>`).join("")}</div></div>
 <div class="wrap"><h2 class="sem">Core team ${esc(t.current_year)}</h2><div class="grid" id="tgrid">${t.current.map(p => person(p, p.role, grp(p.role))).join("")}</div>
-<h2 class="sem">Earlier teams</h2><div class="grid">${t.earlier.map(p => person(p, `${p.role}, ${p.year}`, "all")).join("")}</div></div>`;
+<h2 class="sem">Earlier teams</h2><div class="grid">${t.earlier.map(p => person(p, `${p.role}, ${p.year}`, "all")).join("")}</div>
+${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="gallery">${g.photos.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(g.label)}, photo ${i + 1}"></button>`).join("")}</div>`).join("")}</div>`;
   },
 
   async notfound() {
@@ -332,8 +337,13 @@ function wireEvents() {
     $$(".reveal", list).forEach(el => el.classList.add("in"));
     count.textContent = `${f.length} of ${st.events.length} events`;
     $$("#chips .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.y === st.y));
-    history.replaceState(null, "", st.y === "all" ? "events.html" : "events.html?y=" + st.y);
+    const p = new URLSearchParams(), sk = new URLSearchParams(location.search).get("skin");
+    if (st.y !== "all") p.set("y", st.y);
+    if (st.q.trim()) p.set("q", st.q.trim());
+    if (sk) p.set("skin", sk);
+    history.replaceState(null, "", "events.html" + (p.toString() ? "?" + p : ""));
   };
+  q.value = st.q;
   q.oninput = () => { st.q = q.value; draw(); };
   $("#chips").onclick = e => { const c = e.target.closest(".chip"); if (c) { st.y = c.dataset.y; draw(); } };
   draw();
@@ -356,15 +366,47 @@ function wireTeam() {
     shell(site, evs); syncTheme();
     main.innerHTML = await pages[page](site);
     if (page !== "event" && page !== "events") document.title = (page === "home" ? "" : $("h1", main)?.textContent.replace(/\.$/, "") + " | ") + site.name + " | " + site.college_short;
+    if ($(".gallery", main) && !$("#lb")) main.insertAdjacentHTML("beforeend", `<dialog id="lb" aria-label="Photo viewer"><img alt=""><p class="lb-err" role="alert" hidden>Could not load this photo.</p><div class="lb-bar"><button type="button" class="btn" data-lb="-1">Previous</button><span class="lb-count" aria-live="polite"></span><button type="button" class="btn" data-lb="1">Next</button><form method="dialog"><button class="btn">Close</button></form></div></dialog>`);
+    const shotsOf = b => $$(".shot:not([hidden])", b.closest(".gallery") || main);
+    const photoUrl = b => location.pathname + location.search + "#photo-" + ($$(".shot:not([hidden])", main).indexOf(b) + 1);
+    const showShot = (d, b) => {
+      try { history.replaceState(history.state, "", photoUrl(b)); } catch {}
+      const shots = shotsOf(b), n = shots.indexOf(b);
+      const im = $("img", d), er = $(".lb-err", d);
+      d._from = b; d.dataset.i = n; er.hidden = true;
+      if (im.getAttribute("src") !== b.dataset.src) { d.classList.add("loading"); d.setAttribute("aria-busy", "true"); d._want = b.dataset.src; im.src = b.dataset.src; }
+      im.alt = $("img", b)?.alt || "";
+      $(".lb-count", d).textContent = shots.length > 1 ? `${n + 1} / ${shots.length}` : "";
+      $$("[data-lb]", d).forEach(x => { x.hidden = shots.length < 2; });
+    };
+    const stepShot = (d, delta) => { const shots = shotsOf(d._from); if (shots.length > 1) showShot(d, shots[(shots.indexOf(d._from) + delta + shots.length) % shots.length]); };
     document.addEventListener("keydown", e => {
       const d = $("#lb"); if (!d?.open || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-      const shots = $$(".shot:not([hidden])", main), n = (+d.dataset.i + (e.key === "ArrowRight" ? 1 : -1) + shots.length) % shots.length, b = shots[n];
-      d.dataset.i = n; $("img", d).src = b.dataset.src; $("img", d).alt = $("img", b)?.alt || "";
+      stepShot(d, e.key === "ArrowRight" ? 1 : -1);
     });
+    const lb = $("#lb");
+    if (lb) {
+      lb.addEventListener("click", e => { const s = e.target.closest("[data-lb]"); if (s) stepShot(lb, +s.dataset.lb); else if (e.target === lb) lb.close(); });
+      let viaPop = false;
+      addEventListener("popstate", () => { if (lb.open) { viaPop = true; lb.close(); } });
+      lb.addEventListener("close", () => {
+        if (viaPop) { viaPop = false; return; }
+        try { if (history.state?.lb) history.back(); else history.replaceState(history.state, "", location.pathname + location.search); } catch {}
+      });
+      const lim = $("img", lb), done = bad => { if (lim.getAttribute("src") !== lb._want) return; lb.classList.remove("loading"); lb.removeAttribute("aria-busy"); $(".lb-err", lb).hidden = !bad; };
+      lim.addEventListener("load", () => done(false));
+      lim.addEventListener("error", () => done(true));
+      let x0 = null;
+      lb.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
+      lb.addEventListener("touchend", e => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) stepShot(lb, dx < 0 ? 1 : -1); }, { passive: true });
+    }
     main.addEventListener("error", e => {
       const b = e.target.closest?.(".shot"); if (!b || e.target.tagName !== "IMG") return;
-      b.remove();
-      if (!$(".shot", main)) { const g = $(".gallery", main); if (g) g.outerHTML = `<div class="empty">No photos yet. Add them in the admin panel under Events.</div>`; }
+      const g = b.closest(".gallery"); b.remove();
+      if (g && !$(".shot", g)) {
+        if (page === "event") g.outerHTML = `<div class="empty">${NOPHOTOS()}</div>`;
+        else { const h = g.previousElementSibling; if (h?.matches("h2.sem")) h.remove(); g.remove(); }
+      }
     }, true);
     main.addEventListener("click", async e => {
       const sh = e.target.closest("#share");
@@ -378,10 +420,14 @@ function wireTeam() {
         return;
       }
       const b = e.target.closest(".shot"); if (!b) return;
-      const d = $("#lb"), im = $("img", d), t = $("img", b); im.src = b.dataset.src; im.alt = t?.alt || ""; d.dataset.i = $$(".shot:not([hidden])", main).indexOf(b); d.setAttribute("aria-label", "Photo viewer"); d.showModal();
+      const d = $("#lb"); try { history.pushState({ lb: 1 }, "", photoUrl(b)); } catch {}
+      showShot(d, b); d.showModal();
     });
+    const dl = lb && /^#photo-(\d+)$/.exec(location.hash);
+    if (dl) { const b = $$(".shot:not([hidden])", main)[+dl[1] - 1]; if (b) { b.scrollIntoView({ block: "center" }); showShot(lb, b); lb.showModal(); } }
     wirePalette(site, evs); wireMotion(); wirePhone(); wireEvents(); wireContactForm(site); wireTeam(); wireSwarm(); wireDock(site);
     activate();
+    document.documentElement.dataset.ready = "1";
   } catch (err) {
     const local = location.protocol === "file:", dk = draftKeys().length;
     main.innerHTML = `<div class="wrap page-head"><h1>Could not load content</h1><p class="lead">${local ? "Open the site through a web server (not by double-clicking the file) so it can read the content folder." : "Something went wrong while loading the site content."}</p>${local ? "" : `<p><button class="btn primary" type="button" id="retry">Retry</button>${dk ? ` <button class="btn" type="button" id="discard-drafts">Discard drafts</button>` : ""}</p>`}</div>`;

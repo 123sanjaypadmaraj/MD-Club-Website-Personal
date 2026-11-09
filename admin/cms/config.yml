@@ -1,7 +1,7 @@
 # Decap CMS config. Setup steps are in README.md.
 backend:
   name: github
-  repo: YOUR_GITHUB_USERNAME/YOUR_REPO   # e.g. 123sanjaypadmaraj/md-club
+  repo: 123sanjaypadmaraj/MD-Club-Website-Personal
   branch: main
   # base_url: https://YOUR-OAUTH-PROXY     # only if the site is NOT on Netlify (see README)
 
@@ -9,8 +9,8 @@ local_backend: true   # lets `npx decap-server` edit files locally without loggi
 
 media_folder: photos
 public_folder: /photos
-site_url: https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO
-display_url: https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO
+site_url: https://123sanjaypadmaraj.github.io/MD-Club-Website-Personal
+display_url: https://123sanjaypadmaraj.github.io/MD-Club-Website-Personal
 
 collections:
   - name: pages
@@ -106,6 +106,13 @@ collections:
               - { name: name, label: Name, widget: string }
               - { name: role, label: Role, widget: string }
               - { name: year, label: Year, widget: string }
+          - name: galleries
+            label: Team photo galleries
+            widget: list
+            summary: "{{fields.label}}"
+            fields:
+              - { name: label, label: Title, widget: string }
+              - { name: photos, label: Photos, widget: list, field: { name: photo, label: Photo, widget: image } }
       - name: achievements
         label: Achievements
         file: content/achievements.json

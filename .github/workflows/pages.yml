@@ -21,9 +21,13 @@ jobs:
         with:
           node-version: 20
       - name: Syntax-check scripts
-        run: node --check assets/site.js && node --check admin/admin.js && node --check scripts/check-content.mjs
+        run: node --check assets/site.js && node --check admin/admin.js && node --check scripts/check-content.mjs && node --check scripts/smoke.mjs && node --check scripts/check-content.test.mjs
+      - name: Run tests
+        run: node --test scripts/*.test.mjs
       - name: Validate content
         run: node scripts/check-content.mjs
+      - name: Smoke test pages
+        run: node scripts/smoke.mjs
       - name: Stage public files
         run: |
           mkdir _site
