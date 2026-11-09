@@ -102,7 +102,8 @@ function field(def, obj, onChange) {
     fs.append(lg, ...def.fields.map(f => field(f, obj[def.key], onChange))); return fs;
   }
   if (def.t === "images") return images(def, obj, onChange);
-  return listField(def, obj, onChange);
+  if (def.t === "list") return listField(def, obj, onChange);
+  throw new Error(`Unknown field type "${def.t}" for "${def.key}"`);
 }
 
 function listField(def, obj, onChange) {
