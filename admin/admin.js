@@ -26,10 +26,11 @@ const TABS = [
       list("functions", "What we do", pair, i => i.title)] }] },
   { id: "contact", label: "Contact and basics", file: "site", preview: "../contact.html", defs: [
     str("name", "Short name"), str("full_name", "Full club name"), str("college", "College"), str("college_short", "College short name"),
-    str("established", "Year established"), str("tagline", "Tagline"), str("instagram", "Instagram URL"), str("instagram_handle", "Instagram handle"),
+    str("established", "Year established"), str("tagline", "Tagline"), str("instagram", "Instagram URL"), str("instagram_handle", "Instagram handle"), str("college_page", "Official college page URL"),
     { t: "object", key: "contact", label: "Contact page", fields: [
       str("coordinators", "Coordinators"),
-      str("form_endpoint", "Form endpoint (Formspree URL; leave empty to hide the form)")] }] },
+      str("form_endpoint", "Form endpoint (Formspree URL; leave empty to hide the form)"),
+      str("email", "Contact email (leave empty to hide)"), str("phone", "Contact phone (leave empty to hide)")] }] },
   { id: "events", label: "Events", file: "events", preview: "../events.html", defs: [
     list("events", "Events", [
       { ...str("slug", "URL slug (letters, numbers, dashes)"), check: (v, o) => !/^[a-z0-9-]+$/.test(v || "") ? "Use lowercase letters, numbers and dashes only." : (data.events?.events || []).filter(e => e !== o && e.slug === v).length ? "Another event already uses this slug." : "" },

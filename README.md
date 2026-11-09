@@ -28,6 +28,12 @@ python -m http.server 8000
 
 Open `http://localhost:8000/admin/cms/`. `local_backend: true` skips login and edits the files directly.
 
+## Settings only the club can fill in
+These stay empty until the club supplies them; the site works without them.
+- **Join form (Formspree).** Create a form at formspree.io, copy its `https://formspree.io/f/<id>` URL and paste it into "Form endpoint" (`contact.form_endpoint` in `content/site.json`). While empty, the Contact page shows an Instagram notice instead of the form. The CSP already allows `https:` for `form-action` and `connect-src`.
+- **Contact email and phone** ("Contact email" / "Contact phone", `contact.email` / `contact.phone`). Each shows a card on the Contact page only when filled in.
+- **Current team year.** `content/team.json` `current_year` is "2025-26" but there is also a "Team 2026-27" gallery. Only the club knows which is right; it has not been changed.
+
 ## Looks
 
 Four dark themes (Nebula purple, Ocean blue, Aurora green, Solar amber) share one structure. Visitors switch with the control in the header, and the choice is remembered. Change the default in the inline script in each page's `<head>` and in `assets/site.js`.

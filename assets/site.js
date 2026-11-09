@@ -138,7 +138,7 @@ const pages = {
     return head("About us", site.full_name, `${site.college}. Established ${site.established}.`) +
       `<div class="wrap"><div class="grid">${[["Who we are", a.who], ["Our objective", a.objective], ["Outcomes", a.outcomes]].map(([t, p], i) => `<div class="card reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><h3>${t}</h3><p>${esc(p)}</p></div>`).join("")}</div>
 <h2 class="sem">What we do</h2><div class="rows">${a.functions.map((f, i) => `<div class="row reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(f.title)}</b><span>${esc(f.text)}</span></span></div>`).join("")}</div>
-<p class="back"><a class="btn primary" href="contact.html">Join us</a></p></div>`;
+${(site.college_page || "").trim() ? `<p class="lead"><a href="${esc(site.college_page.trim())}">Club page on the NHCE website</a></p>` : ""}<p class="back"><a class="btn primary" href="contact.html">Join us</a></p></div>`;
   },
 
   async achievements() {
@@ -167,11 +167,11 @@ ${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="
   },
 
   async contact(site) {
-    const c = site.contact, ep = (c.form_endpoint || "").trim();
+    const c = site.contact, ep = (c.form_endpoint || "").trim(), em = (c.email || "").trim(), ph = (c.phone || "").trim(), cp = (site.college_page || "").trim();
     const form = ep ? `<form action="${esc(ep)}" method="POST" class="form" data-ajax><input class="sr" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Name<input name="name" autocomplete="name" required></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Why do you want to join?<textarea name="message" rows="4"></textarea></label><button class="btn primary" type="submit">Send</button></form>`
-      : `<div class="empty">Online registration opens soon. Message us on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a> to join.</div>`;
+      : `<div class="empty">Online registration opens soon. Message us on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a>${em ? ` or email <a href="mailto:${esc(em)}">${esc(em)}</a>` : ""} to join.</div>`;
     return head("Contact us", "Join MAD Club.", "New members are welcome every semester.") +
-      `<div class="wrap"><div class="grid"><div class="card"><h3>Instagram</h3><p><a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></p></div><div class="card"><h3>Coordinators</h3><p>${esc(c.coordinators)}</p></div><div class="card"><h3>Where</h3><p>${esc(site.college)}</p></div></div>
+      `<div class="wrap"><div class="grid"><div class="card"><h3>Instagram</h3><p><a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></p></div><div class="card"><h3>Coordinators</h3><p>${esc(c.coordinators)}</p></div>${em ? `<div class="card"><h3>Email</h3><p><a href="mailto:${esc(em)}">${esc(em)}</a></p></div>` : ""}${ph ? `<div class="card"><h3>Phone</h3><p><a href="tel:${esc(ph.replace(/\s+/g, ""))}">${esc(ph)}</a></p></div>` : ""}<div class="card"><h3>Where</h3><p>${esc(site.college)}${cp ? `<br><a href="${esc(cp)}">Club page on the NHCE website</a>` : ""}</p></div></div>
 <h2 class="sem">Register interest</h2>${form}</div>`;
   }
 };

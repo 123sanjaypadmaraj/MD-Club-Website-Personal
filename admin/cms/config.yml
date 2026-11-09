@@ -28,6 +28,7 @@ collections:
           - { name: tagline, label: Tagline, widget: string }
           - { name: instagram, label: Instagram URL, widget: string }
           - { name: instagram_handle, label: Instagram handle, widget: string }
+          - { name: college_page, label: Official college page URL, widget: string, required: false }
           - { name: hero_title, label: Home headline, widget: text }
           - { name: hero_lead, label: Home intro paragraph, widget: text }
           - name: stats
@@ -71,6 +72,8 @@ collections:
             fields:
               - { name: coordinators, label: Coordinators, widget: string }
               - { name: form_endpoint, label: "Form endpoint (Formspree URL, leave empty to hide the form)", widget: string, required: false }
+              - { name: email, label: "Contact email (leave empty to hide)", widget: string, required: false }
+              - { name: phone, label: "Contact phone (leave empty to hide)", widget: string, required: false }
       - name: events
         label: Events
         file: content/events.json

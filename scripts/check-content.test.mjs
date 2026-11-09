@@ -85,6 +85,11 @@ test("team gallery with an existing photo passes", () => {
   assert.doesNotMatch(r.out, /not used by any/);
 });
 test("site.json missing about.functions", () => fails(run(f => { delete f["content/site.json"].about.functions; }), /about\.functions must be an array/));
+test("bad contact email", () => fails(run(f => { f["content/site.json"].contact.email = "not-an-email"; }), /contact.email is not a valid/));
+test("bad contact phone", () => fails(run(f => { f["content/site.json"].contact.phone = "call me"; }), /contact.phone is not a valid/));
+test("empty email and phone pass", () => { const r = run(f => { f["content/site.json"].contact.email = ""; f["content/site.json"].contact.phone = ""; }); assert.strictEqual(r.code, 0, r.out); });
+test("college_page must be https", () => fails(run(f => { f["content/site.json"].college_page = "http://x.example"; }), /college_page must be empty or start with https/));
+test("empty form_endpoint only warns", () => { const r = run(); assert.strictEqual(r.code, 0, r.out); assert.match(r.out, /warning: site.json: contact.form_endpoint is empty/); });
 test("site.json form_endpoint must be https", () => fails(run(f => { f["content/site.json"].contact.form_endpoint = "http://x"; }), /form_endpoint must be empty or start with https/));
 test("achievements app without a name", () => fails(run(f => { delete f["content/achievements.json"].apps[0].name; }), /achievements\.json: apps\[0\] missing name/));
 test("broken link in a page", () => fails(run(f => { f["index.html"] = '<a href="missing.html">x</a>'; }), /index\.html: references missing missing\.html/));

@@ -102,6 +102,14 @@ try {
     const ep = site.contact?.form_endpoint;
     if (typeof ep !== "string") errors.push("site.json: contact.form_endpoint must be a string");
     else if (ep.trim() && !/^https:\/\//.test(ep.trim())) errors.push("site.json: contact.form_endpoint must be empty or start with https://");
+    for (const k of ["email", "phone"]) if (site.contact?.[k] !== undefined && typeof site.contact[k] !== "string") errors.push(`site.json: contact.${k} must be a string`);
+    const em = site.contact?.email?.trim?.(), ph = site.contact?.phone?.trim?.();
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) errors.push("site.json: contact.email is not a valid email address");
+    if (ph && !/^\+?[0-9 ()-]{7,20}$/.test(ph)) errors.push("site.json: contact.phone is not a valid phone number");
+    const cp = site.college_page;
+    if (cp !== undefined && typeof cp !== "string") errors.push("site.json: college_page must be a string");
+    else if (cp?.trim() && !/^https:\/\//.test(cp.trim())) errors.push("site.json: college_page must be empty or start with https://");
+    if (typeof ep === "string" && !ep.trim()) console.warn("warning: site.json: contact.form_endpoint is empty, so the Contact page shows the Instagram notice instead of the join form");
   } else errors.push("site.json: missing");
   const ach = docs["achievements.json"];
   if (ach) {
