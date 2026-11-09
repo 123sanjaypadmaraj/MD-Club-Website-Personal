@@ -11,10 +11,12 @@ import { execFile } from "node:child_process";
 const root = join(resolve(process.env.SMOKE_ROOT || fileURLToPath(new URL("..", import.meta.url))), sep);
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".xml": "application/xml", ".txt": "text/plain" };
 
-const chrome = [process.env.CHROME, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"]
+const chrome = [process.env.CHROME, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "/usr/bin/chromium", "/usr/bin/chromium-browser", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"]
   .find(p => p && existsSync(p));
 if (!chrome) {
-  console.log("smoke: Chrome not found, skipped");
+  console.log("smoke: Chrome/Chromium/Edge not found, skipped (set CHROME=<path>)");
   process.exit(process.env.CI ? 1 : 0);
 }
 

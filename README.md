@@ -40,4 +40,7 @@ Ctrl+K (or the Search button) opens a command menu for pages, events and styles.
 
 - Contact form: set "Form endpoint" in the admin to a Formspree URL. Empty shows an Instagram notice instead.
 - Open the site through a web server, not by double-clicking `index.html`, so the browser can read `content/`.
-- Run `node --test scripts/*.test.mjs` to test the content check (uses small fixtures, no npm install).
+- Before you push, run the same three commands CI runs, in this order:
+  1. `node --test scripts/*.test.mjs` tests the content check (small fixtures, no npm install).
+  2. `node scripts/check-content.mjs` must print "content ok" (size warnings are fine).
+  3. `node scripts/smoke.mjs` loads every page in headless Chrome, Chromium or Edge. Set `CHROME=<path>` if it is not found, and `SMOKE_ROOT=<folder>` to test a staged copy as CI does.
