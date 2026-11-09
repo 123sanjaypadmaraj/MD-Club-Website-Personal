@@ -137,11 +137,15 @@ try {
   if (keys) {
     const css = existsSync(join(root, "assets/style.css")) ? readFileSync(join(root, "assets/style.css"), "utf8") : null;
     if (css) for (const k of keys) if (!css.includes(`:root[data-skin=${k}]`)) errors.push(`assets/style.css: no :root[data-skin=${k}] rule for skin "${k}" in SKINS`);
+    const okDef = js.match(/const skinOk = [^\n]*\?\s*k\s*:\s*"([a-z]+)"/)?.[1];
+    if (okDef && !keys.includes(okDef)) errors.push(`assets/site.js: default skin "${okDef}" is not in SKINS`);
     const want = [...keys].sort().join("|");
     for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
       const h = readFileSync(join(root, f), "utf8");
       for (const m of h.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
         const list = m[1].match(/\/\^\(([a-z|]+)\)\$\/\.test\(k\)/)?.[1];
+        const fb = m[1].match(/\.test\(k\)\?k:"([a-z]+)"/)?.[1];
+        if (okDef && fb !== undefined && fb !== okDef) errors.push(`${f}: inline default skin "${fb}" does not match skinOk default "${okDef}" in assets/site.js`);
         if (list !== undefined && list.split("|").sort().join("|") !== want) errors.push(`${f}: inline skin list "${list}" does not match SKINS in assets/site.js`);
       }
     }
