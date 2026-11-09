@@ -2,7 +2,11 @@
 addEventListener("error", e => { document.documentElement.dataset.jsError = String(e.message || e.error).slice(0, 200); });
 addEventListener("unhandledrejection", e => { document.documentElement.dataset.jsError = String(e.reason && e.reason.message || e.reason).slice(0, 200); });
 document.addEventListener("securitypolicyviolation", e => { document.documentElement.dataset.cspViolation = e.violatedDirective; });
-const NAV = [["index.html","Home"],["events.html","Events"],["about.html","About"],["achievements.html","Achievements"],["team.html","Team"],["contact.html","Contact"]];
+// The WordPress theme ships this same file and injects window.MAD_WP = { content, urls, base }; the static site leaves it unset.
+const WP = window.MAD_WP || null;
+const FILES = { home: "index.html", events: "events.html", event: "event.html", about: "about.html", achievements: "achievements.html", team: "team.html", contact: "contact.html" };
+const U = (k, q) => { const b = WP ? WP.urls[k] : FILES[k], s = q ? new URLSearchParams(q).toString() : ""; return s ? b + (b.includes("?") ? "&" : "?") + s : b; };
+const NAV = [["home","Home"],["events","Events"],["about","About"],["achievements","Achievements"],["team","Team"],["contact","Contact"]];
 const SKINS = [["nebula","Nebula"],["ocean","Ocean"],["aurora","Aurora"],["solar","Solar"]];
 const skinOk = k => SKINS.some(s => s[0] === k) ? k : "nebula";
 const root = document.documentElement;
@@ -13,15 +17,20 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const cache = new Map();
 const load = n => { if (!cache.has(n)) cache.set(n, loadRaw(n)); return cache.get(n); };
 const loadRaw = n => {
+  if (WP) return Promise.resolve(WP.content[n]);
   try { const d = localStorage.getItem("mad_content_" + n); if (d) return Promise.resolve(JSON.parse(d)); } catch {}
   return fetch(`content/${n}.json`).then(r => { if (!r.ok) throw new Error(n); return r.json(); });
 };
 const NOPHOTOS = () => "No photos yet." + (draftKeys().length ? " Add them in the admin panel under Events." : "");
-const draftKeys = () => { try { return Object.keys(localStorage).filter(k => k.startsWith("mad_content_")); } catch { return []; } };
+const draftKeys = () => { if (WP) return []; try { return Object.keys(localStorage).filter(k => k.startsWith("mad_content_")); } catch { return []; } };
 // Photo paths from the CMS may be root-absolute (/photos/x.jpg); pages live at the site root, so make them relative.
-const photoSrc = p => /^(data:|https?:|\/\/)/i.test(p) ? p : String(p).replace(/^\/+/, "");
+const photoSrc = p => /^(data:|https?:|\/\/)/i.test(p) ? p : (WP ? WP.base : "") + String(p).replace(/^\/+/, "");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const page = document.body.dataset.page;
+const navKey = page === "event" ? "events" : page;
+const idx = i => String(i + 1).padStart(2, "0");
+const initials = n => String(n).trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("");
+const ARROW = `<svg class="arr" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 // Orders semesters chronologically: year prefix, then Odd (1) before Even (2); unknown formats sort last.
 const semKey = s => { const m = String(s).match(/^(\d\d)-(\d\d) (Odd|Even)/); return m ? +m[1] * 10 + (m[3] === "Even" ? 2 : 1) : -1; };
 const semYear = s => (s.match(/^\d\d-\d\d/) || [""])[0];
@@ -36,31 +45,38 @@ function syncTheme() {
 }
 function shell(site, events) {
   const years = [...new Set(events.map(e => semYear(e.semester)).filter(Boolean))].sort().reverse();
-  const cur = location.pathname.split("/").pop() || "index.html";
   document.body.insertAdjacentHTML("afterbegin", `<a class="skip" href="#main">Skip to content</a><div class="progress" id="progress"></div>
-<header class="nav"><div class="wrap"><a class="brand" href="index.html">${esc(site.name)}<small>${esc(site.college_short)}</small></a>
-<nav class="links" id="links" aria-label="Main">${NAV.map(([h,t])=>`<a href="${h}"${h===cur?' aria-current="page"':""}>${t}</a>`).join("")}</nav>
+<header class="nav"><div class="wrap"><a class="brand" href="${esc(U("home"))}"><i class="mark"></i>${esc(site.name)}<small>${esc(site.college_short)}</small></a>
+<nav class="links" id="links" aria-label="Main">${NAV.map(([k,t])=>`<a href="${esc(U(k))}"${k===navKey?' aria-current="page"':""}>${t}</a>`).join("")}</nav>
 <button class="kbtn" id="open-pal" type="button" aria-label="Open command menu">Search <kbd>Ctrl K</kbd></button>
-<div class="skins" role="group" aria-label="Site style">${SKINS.map(([k,t])=>`<button type="button" data-skin="${k}" aria-pressed="${root.dataset.skin===k}">${t}</button>`).join("")}</div>
+<div class="skins" role="group" aria-label="Site style">${SKINS.map(([k,t])=>`<button type="button" data-skin="${k}" aria-pressed="${root.dataset.skin===k}" aria-label="${t} style" title="${t} style"><i></i></button>`).join("")}</div>
 <button class="burger" id="burger" type="button" aria-expanded="false" aria-controls="links">Menu</button></div></header>`);
-  document.body.insertAdjacentHTML("beforeend", `<footer><div class="wrap"><div class="cols"><div><p class="foot-brand">${esc(site.full_name)}</p><p>${esc(site.college)} (${esc(site.college_short)}). Est. ${esc(site.established)}.</p><p><a href="${esc(site.instagram)}">${esc(site.instagram_handle)} on Instagram</a></p></div>
-<ul><li><b>Explore</b></li>${NAV.map(([h,t])=>`<li><a href="${h}">${t}</a></li>`).join("")}</ul>
-<ul><li><b>Event archives</b></li>${years.map(y => `<li><a href="events.html?y=${esc(y)}">20${y.replace("-", "-20")}</a></li>`).join("")}</ul></div>
-<p class="legal">&copy; ${new Date().getFullYear()} ${esc(site.full_name)}, ${esc(site.college_short)}</p></div></footer>`);
+  document.body.insertAdjacentHTML("beforeend", `<footer><div class="wrap"><div class="cols"><div><p class="foot-brand">${esc(site.full_name)}</p><p>${esc(site.college)} (${esc(site.college_short)}). Est. ${esc(site.established)}.</p><p><a class="ul" href="${esc(site.instagram)}">${esc(site.instagram_handle)} on Instagram</a></p></div>
+<ul><li><b>Explore</b></li>${NAV.map(([k,t])=>`<li><a href="${esc(U(k))}">${t}</a></li>`).join("")}</ul>
+<ul><li><b>Event archives</b></li>${years.map(y => `<li><a href="${esc(U("events", { y }))}">20${y.replace("-", "-20")}</a></li>`).join("")}</ul></div>
+<p class="mega" aria-hidden="true">${esc(site.name)}</p>
+<p class="legal"><span>&copy; ${new Date().getFullYear()} ${esc(site.full_name)}, ${esc(site.college_short)}</span><span>${esc(site.tagline)}</span></p></div></footer>`);
   const dk = draftKeys().map(k => k.slice(12));
   if (dk.length) {
     document.body.insertAdjacentHTML("afterbegin", `<div class="draft-banner" role="status">You are viewing unpublished drafts from the admin editor in this browser: ${esc(dk.join(", "))}. <button type="button" id="discard-drafts">Discard drafts</button> <a href="admin/">Open editor</a></div>`);
     $("#discard-drafts").onclick = () => { draftKeys().forEach(k => { try { localStorage.removeItem(k); } catch {} }); location.reload(); };
   }
-  const links = $("#links"), burger = $("#burger");
-  const setMenu = o => { links.classList.toggle("open", o); burger.setAttribute("aria-expanded", o); };
+  const links = $("#links"), burger = $("#burger"), hdr = $("header.nav");
+  const setMenu = o => { links.classList.toggle("open", o); burger.setAttribute("aria-expanded", o); burger.textContent = o ? "Close" : "Menu"; };
   burger.onclick = () => setMenu(!links.classList.contains("open"));
   links.onclick = e => e.target.closest("a") && setMenu(false);
   document.addEventListener("keydown", e => { if (e.key === "Escape") { setMenu(false); } });
   $$(".skins button").forEach(b => b.onclick = () => setSkin(b.dataset.skin));
   const bar = $("#progress");
-  addEventListener("scroll", () => { bar.style.transform = `scaleX(${scrollY / Math.max(1, document.body.scrollHeight - innerHeight)})`; }, {passive:true});
-  addEventListener("pointermove", e => { root.style.setProperty("--mx", e.clientX + "px"); root.style.setProperty("--my", e.clientY + "px"); }, {passive:true});
+  // Scroll: progress bar, header state, and a velocity value the marquee and photo reel lean into.
+  let ly = scrollY, vel = 0, raf = 0;
+  const ease = () => { vel *= .88; root.style.setProperty("--vel", vel.toFixed(2)); raf = Math.abs(vel) > .05 ? requestAnimationFrame(ease) : 0; if (!raf) root.style.setProperty("--vel", "0"); };
+  addEventListener("scroll", () => {
+    bar.style.transform = `scaleX(${scrollY / Math.max(1, document.body.scrollHeight - innerHeight)})`;
+    hdr.classList.toggle("scrolled", scrollY > 12);
+    if (!reduced) { vel = Math.max(-24, Math.min(24, scrollY - ly)); if (!raf) raf = requestAnimationFrame(ease); }
+    ly = scrollY;
+  }, {passive:true});
 }
 
 function activate() {
@@ -79,31 +95,61 @@ function activate() {
 
 const setMeta = (sel, attr, key, val) => { let m = $(sel); if (!m) { m = document.createElement("meta"); m.setAttribute(attr, key); document.head.append(m); } m.setAttribute("content", val); };
 const head = (eyebrow, title, lead) => `<div class="page-head wrap"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="reveal">${esc(title)}</h1>${lead ? `<p class="lead reveal">${esc(lead)}</p>` : ""}</div>`;
-const eventRow = (e, i) => `<a class="row reveal" href="event.html?e=${encodeURIComponent(e.slug)}"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}${(e.photos || []).length ? ` · ${(e.photos || []).length} photo${e.photos.length === 1 ? "" : "s"}` : ""}</span></a>`;
+const thumb = e => { const p = (e.photos || [])[0]; return `<span class="thumb" data-l="${esc(initials(e.name))}">${p ? `<img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="">` : ""}</span>`; };
+const eventRow = (e, i) => `<a class="row reveal" href="${esc(U("event", { e: e.slug }))}"><span class="idx">${idx(i)}</span>${thumb(e)}<span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}${(e.photos || []).length ? ` · ${(e.photos || []).length} photo${e.photos.length === 1 ? "" : "s"}` : ""}</span>${ARROW}</a>`;
+const stat = s => `<div class="stat reveal"><b data-count>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`;
+const card = (t, p, i) => `<div class="card reveal"><span class="idx">${idx(i)}</span><h3>${esc(t)}</h3><p>${esc(p)}</p></div>`;
+const shot = (p, alt) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(alt)}"></button>`;
 
-function phone(events) {
-  const rows = events.slice(0, 5).map((e, i) => `<li class="${i === 0 ? "on" : ""}" data-d="${esc(e.description)}" data-slug="${esc(e.slug)}"><b>${esc(e.name)}</b><span>${esc(e.semester)}</span></li>`).join("");
-  return `<div class="stage" aria-hidden="true"><div class="phone"><div class="notch"></div><div class="screen"><p class="s-title">Events</p><ul class="s-list">${rows}</ul><p class="s-desc" id="s-desc">${esc(events[0]?.description || "")}</p><div class="s-bar"><i></i><i></i><i></i></div></div></div>
-<pre class="code"><span class="c1">class</span> <span class="c2">MadClub</span> <span class="c1">extends</span> StatelessWidget {
+// Hero phone: a story player (tap sides, auto-advance) over the real event photos.
+function stories(site, events) {
+  const withPh = events.filter(e => (e.photos || []).length);
+  const evs = (withPh.length ? withPh : events).slice(0, 6);
+  if (!evs.length) return "";
+  window.__st = evs;
+  const words = site.tagline.split(/[^A-Za-z0-9]+/).filter(Boolean).join(" \u00b7 ").toUpperCase() + " \u00b7 ";
+  return `<div class="stage"><div class="phone" role="group" aria-label="Event stories"><span class="island"></span><div class="screen" id="st">
+${evs.map((e, i) => `<div class="st-slide${i ? "" : " on"}">${(e.photos || []).length ? `<img alt="" data-src="${esc(photoSrc(e.photos[0]))}">` : ""}<span class="st-type">${esc(e.name)}</span></div>`).join("")}
+<div class="st-bars">${evs.map(() => `<i><b></b></i>`).join("")}</div>
+<p class="st-head"><span class="st-av">${esc(site.name[0] || "M")}</span><b>${esc(site.instagram_handle.replace(/^@/, ""))}</b><span id="st-sem"></span></p>
+<button type="button" class="st-nav prev" aria-label="Previous event"></button><button type="button" class="st-nav next" aria-label="Next event"></button>
+<div class="st-cap"><b id="st-name"></b><span id="st-desc"></span><a class="st-open" id="st-open" href="${esc(U("events"))}">Open event ${ARROW}</a></div>
+</div></div>
+<svg class="badge" viewBox="0 0 120 120" aria-hidden="true"><defs><path id="badge-p" d="M60 60m-45 0a45 45 0 1 1 90 0a45 45 0 1 1-90 0"/></defs><circle cx="60" cy="60" r="60"/><g class="spin"><text><textPath href="#badge-p" textLength="278">${esc(words + words)}</textPath></text></g><text class="badge-m" x="60" y="69" text-anchor="middle">${esc(site.name.split(" ")[0])}</text></svg>
+<pre class="code" aria-hidden="true"><span class="c1">class</span> <span class="c2">MadClub</span> <span class="c1">extends</span> StatelessWidget {
   <span class="c3">Widget</span> build(context) =&gt;
     <span class="c2">Text</span>(<span class="c4">'Code. Fun. Repeat.'</span>);
 }</pre></div>`;
+}
+// Two rows of real event photos drifting in opposite directions; each photo opens its event.
+function reel(events) {
+  const items = events.flatMap(e => { const p = e.photos || []; return (p.length > 1 ? p.slice(1, 4) : p).map(src => ({ src, e })); });
+  if (items.length < 4) return "";
+  const half = Math.ceil(items.length / 2), rows = [items.slice(0, half), items.slice(half)];
+  const cell = (x, dup) => `<a class="reel-i" href="${esc(U("event", { e: x.e.slug }))}"${dup ? ' tabindex="-1" aria-hidden="true"' : ""}><img loading="lazy" decoding="async" src="${esc(photoSrc(x.src))}" alt="${dup ? "" : esc(x.e.name)}"><span>${esc(x.e.name)}</span></a>`;
+  return `<div class="reel">${rows.map((r, n) => `<div class="reel-row${n ? " rev" : ""}"><div class="reel-track">${r.map(x => cell(x)).join("")}${r.map(x => cell(x, true)).join("")}</div></div>`).join("")}</div>`;
 }
 
 const pages = {
   async home(site) {
     const { events } = await load("events");
     const flags = events.filter(e => e.flagship);
-    const words = site.hero_title.split(" ").map((w, i) => `<span class="w" style="--i:${i}">${esc(w)}</span>`).join(" ");
+    const hw = site.hero_title.split(" "), cutAt = hw.findIndex(w => /[.!?]$/.test(w));
+    const split = cutAt >= 0 && cutAt < hw.length - 1;
+    const pp = events.flatMap(e => (e.photos || []).slice(2, 3))[0] || events.flatMap(e => e.photos || [])[0];
+    const pill = pp ? ` <span class="pill w" style="--i:${cutAt + 1}"><img src="${esc(photoSrc(pp))}" alt=""></span>` : "";
+    const words = hw.map((w, i) => `<span class="w${split && i > cutAt ? " w2" : ""}" style="--i:${i + (split && i > cutAt ? 1 : 0)}">${esc(w)}</span>${split && i === cutAt ? pill : ""}`).join(" ");
     const marquee = [...events, ...events].map(e => `<span>${esc(e.name)}</span>`).join("");
-    return `<section class="hero wrap"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}_</p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
-<p><a class="btn primary" href="contact.html">Join the club</a><a class="btn" href="events.html">See our events</a></p></div>${phone(events)}</section>
+    const rl = reel(events);
+    return `<section class="hero"><div class="wrap hero-in"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}<i class="caret">_</i></p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
+<p class="hero-cta"><a class="btn primary" href="${esc(U("contact"))}">Join the club ${ARROW}</a><a class="btn" href="${esc(U("events"))}">See our events</a></p></div>${stories(site, events)}</div></section>
 <div class="marquee" aria-hidden="true"><div class="track">${marquee}</div></div>
-<section class="wrap"><div class="stats">${site.stats.map(s => `<div class="stat reveal"><b data-count>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join("")}</div></section>
-<section class="wrap"><p class="eyebrow">What makes us tick</p><div class="big-list">${site.highlights.map((h, i) => `<div class="big reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><h2>${esc(h.title)}</h2><p>${esc(h.text)}</p></div>`).join("")}</div></section>
-<section class="wrap"><div class="sec-head"><div><p class="eyebrow">Flagship events</p><h2>Open to every student, every semester.</h2></div><a class="btn" href="events.html">All events</a></div><div class="rows">${flags.map(eventRow).join("")}</div></section>
-<section class="wrap"><p class="eyebrow">${esc(site.why_title)}</p><h2 class="why-h">${esc(site.why_lead)}</h2><div class="grid">${site.why.map((w, i) => `<div class="card reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><h3>${esc(w.title)}</h3><p>${esc(w.text)}</p></div>`).join("")}</div></section>
-<section class="wrap"><div class="cta reveal"><h2>${esc(site.cta_title)}</h2><p class="lead">${esc(site.cta_text)}</p><a class="btn primary" href="contact.html">Register now</a><a class="btn" href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></div></section>`;
+<section class="wrap"><div class="stats">${site.stats.map(stat).join("")}</div></section>
+<section class="wrap"><p class="eyebrow">What makes us tick</p><div class="big-list">${site.highlights.map((h, i) => `<div class="big reveal"><span class="idx">${idx(i)}</span><h2>${esc(h.title)}</h2><p>${esc(h.text)}</p></div>`).join("")}</div></section>
+${rl ? `<section class="reel-sec"><div class="wrap sec-head"><div><p class="eyebrow">Seen at our events</p><h2>Real rooms. Real people. Real builds.</h2></div><a class="btn" href="${esc(U("events"))}">Browse events</a></div>${rl}</section>` : ""}
+<section class="wrap"><div class="sec-head"><div><p class="eyebrow">Flagship events</p><h2>Open to every student, every semester.</h2></div><a class="btn" href="${esc(U("events"))}">All events</a></div><div class="rows">${flags.map(eventRow).join("")}</div></section>
+<section class="wrap"><p class="eyebrow">${esc(site.why_title)}</p><h2 class="why-h">${esc(site.why_lead)}</h2><div class="grid why">${site.why.map((w, i) => card(w.title, w.text, i)).join("")}</div></section>
+<section class="wrap"><div class="cta reveal"><p class="eyebrow">${esc(site.tagline)}</p><h2>${esc(site.cta_title)}</h2><p class="lead">${esc(site.cta_text)}</p><p><a class="btn primary" href="${esc(U("contact"))}">Register now ${ARROW}</a><a class="btn" href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></p></div></section>`;
   },
 
   async events() {
@@ -113,57 +159,57 @@ const pages = {
     window.__ev = { events, y: years.includes(y0) ? y0 : "all", q: qp.get("q") || "" };
     return head("Events", "Everything we have run.", "Search every event, newest first. Open one for its photos.") +
       `<div class="wrap tools"><label class="search"><span class="sr">Search events</span><input id="q" type="search" placeholder="Search events, e.g. hack, UI, git" autocomplete="off"></label>
-<div class="chips" id="chips"><button class="chip" data-y="all">All</button>${years.map(y => `<button class="chip" data-y="${y}">20${y.replace("-", "-20")}</button>`).join("")}</div><p class="count" id="count" aria-live="polite"></p></div>
+<div class="chips" id="chips"><button type="button" class="chip" data-y="all">All</button>${years.map(y => `<button type="button" class="chip" data-y="${y}">20${y.replace("-", "-20")}</button>`).join("")}</div><p class="count" id="count" aria-live="polite"></p></div>
 <div class="wrap" id="evlist"></div>`;
   },
 
   async event() {
     const { events } = await load("events");
     const e = events.find(x => x.slug === new URLSearchParams(location.search).get("e"));
-    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><a class="btn" href="events.html">All events</a></div>`; }
+    if (!e) { document.title = "Event not found | MAD Club"; setMeta('meta[name=robots]', "name", "robots", "noindex"); return head("Events", "Event not found") + `<div class="wrap"><p class="back"><a class="btn" href="${esc(U("events"))}">All events</a></p></div>`; }
     document.title = `${e.name} | MAD Club`;
     setMeta('meta[name=description]', "name", "description", e.description);
     setMeta('meta[property="og:title"]', "property", "og:title", `${e.name} | MAD Club`);
     setMeta('meta[property="og:description"]', "property", "og:description", e.description);
     const ph = e.photos || [];
     const ord = [...events].sort((x, y) => semKey(y.semester) - semKey(x.semester)), i = ord.indexOf(e);
-    const lk = (ev, t) => ev ? `<a class="btn" href="event.html?e=${encodeURIComponent(ev.slug)}">${t}: ${esc(ev.name)}</a>` : "";
+    const lk = (ev, t) => ev ? `<a class="next-ev" href="${esc(U("event", { e: ev.slug }))}"><small>${t} event</small><b>${esc(ev.name)}</b>${thumb(ev)}</a>` : "";
     const evNav = ord.length > 1 ? `<nav class="back" aria-label="More events">${lk(ord[i + 1], "Older")}${lk(ord[i - 1], "Newer")}</nav>` : "";
-    return head(e.semester, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(e.name)}, photo ${i + 1}"></button>`).join("")}</div>` : `<div class="empty">${NOPHOTOS()}</div>`}
-<p class="back"><a class="btn" href="events.html">All events</a> <button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>${evNav}</div>`;
+    return head(`${e.semester}${e.flagship ? " \u00b7 Flagship" : ""}${ph.length ? ` \u00b7 ${ph.length} photo${ph.length === 1 ? "" : "s"}` : ""}`, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => shot(p, `${e.name}, photo ${i + 1}`)).join("")}</div>` : `<div class="empty">${NOPHOTOS()}</div>`}
+<p class="back"><a class="btn" href="${esc(U("events"))}">All events</a> <button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>${evNav}</div>`;
   },
 
   async about(site) {
-    const a = site.about;
+    const a = site.about, { events } = await load("events");
     return head("About us", site.full_name, `${site.college}. Established ${site.established}.`) +
-      `<div class="wrap"><div class="grid">${[["Who we are", a.who], ["Our objective", a.objective], ["Outcomes", a.outcomes]].map(([t, p], i) => `<div class="card reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><h3>${t}</h3><p>${esc(p)}</p></div>`).join("")}</div>
-<h2 class="sem">What we do</h2><div class="rows">${a.functions.map((f, i) => `<div class="row reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><span class="row-main"><b>${esc(f.title)}</b><span>${esc(f.text)}</span></span></div>`).join("")}</div>
-${(site.college_page || "").trim() ? `<p class="lead"><a href="${esc(site.college_page.trim())}">Club page on the NHCE website</a></p>` : ""}<p class="back"><a class="btn primary" href="contact.html">Join us</a></p></div>`;
+      `<div class="wrap"><div class="grid">${[["Who we are", a.who], ["Our objective", a.objective], ["Outcomes", a.outcomes]].map(([t, p], i) => card(t, p, i)).join("")}</div></div>
+${reel(events)}
+<div class="wrap"><h2 class="sem">What we do</h2><div class="big-list">${a.functions.map((f, i) => `<div class="big reveal"><span class="idx">${idx(i)}</span><h2>${esc(f.title)}</h2><p>${esc(f.text)}</p></div>`).join("")}</div>
+${(site.college_page || "").trim() ? `<p class="lead"><a class="ul" href="${esc(site.college_page.trim())}">Club page on the NHCE website</a></p>` : ""}<p class="back"><a class="btn primary" href="${esc(U("contact"))}">Join us ${ARROW}</a></p></div>`;
   },
 
   async achievements() {
     const a = await load("achievements"), { events } = await load("events");
     return head("Achievements", "What we have shipped.") +
-      `<div class="wrap"><div class="stats">${a.stats.map(s => `<div class="stat reveal"><b data-count>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join("")}</div>
+      `<div class="wrap"><div class="stats">${a.stats.map(stat).join("")}</div>
 <h2 class="sem">Flagship events</h2><div class="rows">${events.filter(e => e.flagship).map(eventRow).join("")}</div>
-<h2 class="sem">Apps built by members</h2><div class="grid">${a.apps.map((p, i) => `<div class="card reveal"><span class="idx">${String(i + 1).padStart(2, "0")}</span><h3>${esc(p.name)}</h3><p>${esc(p.text)}</p></div>`).join("")}</div></div>`;
+<h2 class="sem">Apps built by members</h2><div class="grid apps">${a.apps.map((p, i) => card(p.name, p.text, i)).join("")}</div></div>`;
   },
 
   async team() {
     const t = await load("team");
-    const ini = n => n.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("");
     const grp = r => /program/i.test(r) ? "Program" : /project/i.test(r) ? "Project" : /marketing/i.test(r) ? "Marketing" : /review/i.test(r) ? "Review" : "Leadership";
-    const person = (p, sub, g) => `<div class="card person reveal" data-g="${g}"><div class="avatar">${esc(ini(p.name))}</div><b>${esc(p.name)}</b><small>${esc(sub)}</small></div>`;
+    const person = (p, sub, g) => `<div class="card person reveal" data-g="${g}"><div class="avatar">${esc(initials(p.name))}</div><b>${esc(p.name)}</b><small>${esc(sub)}</small></div>`;
     const groups = ["Leadership", "Program", "Project", "Marketing", "Review"];
     return head("The team", "The people behind MAD.") +
-      `<div class="wrap tools"><div class="chips" id="tchips"><button class="chip" data-g="all" aria-pressed="true">All</button>${groups.map(g => `<button class="chip" data-g="${g}" aria-pressed="false">${g}</button>`).join("")}</div></div>
-<div class="wrap"><h2 class="sem">Core team ${esc(t.current_year)}</h2><div class="grid" id="tgrid">${t.current.map(p => person(p, p.role, grp(p.role))).join("")}</div>
-<h2 class="sem">Earlier teams</h2><div class="grid">${t.earlier.map(p => person(p, `${p.role}, ${p.year}`, "all")).join("")}</div>
-${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="gallery">${g.photos.map((p, i) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(g.label)}, photo ${i + 1}"></button>`).join("")}</div>`).join("")}</div>`;
+      `<div class="wrap tools"><div class="chips" id="tchips"><button type="button" class="chip" data-g="all" aria-pressed="true">All</button>${groups.map(g => `<button type="button" class="chip" data-g="${g}" aria-pressed="false">${g}</button>`).join("")}</div></div>
+<div class="wrap"><h2 class="sem">Core team ${esc(t.current_year)}</h2><div class="grid people" id="tgrid">${t.current.map(p => person(p, p.role, grp(p.role))).join("")}</div>
+<h2 class="sem">Earlier teams</h2><div class="grid people">${t.earlier.map(p => person(p, `${p.role}, ${p.year}`, "all")).join("")}</div>
+${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="gallery faces">${g.photos.map((p, i) => shot(p, `${g.label}, photo ${i + 1}`)).join("")}</div>`).join("")}</div>`;
   },
 
   async notfound() {
-    return head("404", "Page not found.", "That page does not exist.") + `<div class="wrap"><a class="btn primary" href="index.html">Home</a><a class="btn" href="events.html">Events</a></div>`;
+    return head("404", "Page not found.", "That page does not exist.") + `<div class="wrap"><p class="back"><a class="btn primary" href="${esc(U("home"))}">Home</a><a class="btn" href="${esc(U("events"))}">Events</a></p></div>`;
   },
 
   async contact(site) {
@@ -171,7 +217,7 @@ ${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="
     const form = ep ? `<form action="${esc(ep)}" method="POST" class="form" data-ajax><input class="sr" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Name<input name="name" autocomplete="name" required></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Why do you want to join?<textarea name="message" rows="4"></textarea></label><button class="btn primary" type="submit">Send</button></form>`
       : `<div class="empty">Online registration opens soon. Message us on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a>${em ? ` or email <a href="mailto:${esc(em)}">${esc(em)}</a>` : ""} to join.</div>`;
     return head("Contact us", "Join MAD Club.", "New members are welcome every semester.") +
-      `<div class="wrap"><div class="grid"><div class="card"><h3>Instagram</h3><p><a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></p></div><div class="card"><h3>Coordinators</h3><p>${esc(c.coordinators)}</p></div>${em ? `<div class="card"><h3>Email</h3><p><a href="mailto:${esc(em)}">${esc(em)}</a></p></div>` : ""}${ph ? `<div class="card"><h3>Phone</h3><p><a href="tel:${esc(ph.replace(/\s+/g, ""))}">${esc(ph)}</a></p></div>` : ""}<div class="card"><h3>Where</h3><p>${esc(site.college)}${cp ? `<br><a href="${esc(cp)}">Club page on the NHCE website</a>` : ""}</p></div></div>
+      `<div class="wrap"><div class="grid contact"><div class="card"><h3>Instagram</h3><p><a class="ul" href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a></p></div><div class="card"><h3>Coordinators</h3><p>${esc(c.coordinators)}</p></div>${em ? `<div class="card"><h3>Email</h3><p><a href="mailto:${esc(em)}">${esc(em)}</a></p></div>` : ""}${ph ? `<div class="card"><h3>Phone</h3><p><a href="tel:${esc(ph.replace(/\s+/g, ""))}">${esc(ph)}</a></p></div>` : ""}<div class="card"><h3>Where</h3><p>${esc(site.college)}${cp ? `<br><a href="${esc(cp)}">Club page on the NHCE website</a>` : ""}</p></div></div>
 <h2 class="sem">Register interest</h2>${form}</div>`;
   }
 };
@@ -207,8 +253,8 @@ function wirePalette(site, events) {
   d.innerHTML = `<input id="pal-q" type="text" role="combobox" aria-expanded="true" aria-controls="pal-l" aria-autocomplete="list" placeholder="Jump to a page, event or style..." aria-label="Command menu" autocomplete="off"><ul id="pal-l" role="listbox"></ul><p class="pal-hint"><kbd>Up</kbd> <kbd>Down</kbd> to move, <kbd>Enter</kbd> to go, <kbd>Esc</kbd> to close</p>`;
   document.body.append(d);
   const items = [
-    ...NAV.map(([h, t]) => ({ g: "Page", t, run: () => { location.href = h; } })),
-    ...[...events].sort((a, b) => semKey(b.semester) - semKey(a.semester)).map(e => ({ g: "Event", t: e.name, s: e.semester, run: () => { location.href = "event.html?e=" + encodeURIComponent(e.slug); } })),
+    ...NAV.map(([k, t]) => ({ g: "Page", t, run: () => { location.href = U(k); } })),
+    ...[...events].sort((a, b) => semKey(b.semester) - semKey(a.semester)).map(e => ({ g: "Event", t: e.name, s: e.semester, run: () => { location.href = U("event", { e: e.slug }); } })),
     ...SKINS.map(([k, t]) => ({ g: "Style", t: t + " style", run: () => setSkin(k) })),
     { g: "Link", t: "Instagram " + site.instagram_handle, run: () => open(site.instagram, "_blank", "noopener") }
   ];
@@ -243,7 +289,7 @@ function wireMotion() {
   if (reduced || !matchMedia("(pointer: fine)").matches) return;
   // card tilt, magnetic buttons, phone parallax
   document.addEventListener("pointermove", e => {
-    const c = e.target.closest?.(".card:not(.person), .stat");
+    const c = e.target.closest?.(".card:not(.person)");
     if (c) { const r = c.getBoundingClientRect(); c.style.setProperty("--ry", ((e.clientX - r.left) / r.width - .5) * 8 + "deg"); c.style.setProperty("--rx", (.5 - (e.clientY - r.top) / r.height) * 8 + "deg"); }
     const b = e.target.closest?.(".btn");
     if (b) { const r = b.getBoundingClientRect(); b.style.setProperty("--tx", (e.clientX - r.left - r.width / 2) * .18 + "px"); b.style.setProperty("--ty", (e.clientY - r.top - r.height / 2) * .28 + "px"); }
@@ -254,57 +300,13 @@ function wireMotion() {
     const c = e.target.closest?.(".card, .stat, .btn");
     if (c && !c.contains(e.relatedTarget)) ["--rx", "--ry", "--tx", "--ty"].forEach(v => c.style.removeProperty(v));
   });
-  // cursor follower
-  const dot = document.createElement("div");
-  dot.className = "cursor"; document.body.append(dot);
-  let x = 0, y = 0, tx = 0, ty = 0;
-  addEventListener("pointermove", e => { tx = e.clientX; ty = e.clientY; dot.classList.add("on"); dot.classList.toggle("big", !!e.target.closest("a, button, .row, .shot, [role=button], input")); }, {passive:true});
-  document.addEventListener("pointerleave", () => dot.classList.remove("on"));
-  let running = false;
-  const loop = () => { x += (tx - x) * .2; y += (ty - y) * .2; dot.style.transform = `translate(${x}px,${y}px)`; if (Math.abs(tx - x) + Math.abs(ty - y) > .5) requestAnimationFrame(loop); else running = false; };
-  addEventListener("pointermove", () => { if (!running) { running = true; requestAnimationFrame(loop); } }, {passive:true});
-}
-// Hero "swarm": named agent cursors that pick page elements, box them, and move on (like a live multiplayer edit).
-function wireSwarm() {
-  const hero = $(".hero");
-  if (!hero || reduced) return;
-  const layer = document.createElement("div");
-  layer.className = "swarm"; layer.setAttribute("aria-hidden", "true");
-  hero.prepend(layer);
-  const roster = [["Design", "#7c5cff"], ["Flutter", "#4cc9f0"], ["Copy", "#5eead4"], ["QA", "#ffb703"], ["Deploy", "#a78bfa"]];
-  const agents = roster.slice(0, innerWidth < 700 ? 3 : 5).map(([name, color]) => {
-    const el = document.createElement("div");
-    el.className = "agent"; el.style.setProperty("--c", color);
-    el.innerHTML = `<i class="box"></i><span class="cur"><svg viewBox="0 0 16 20" width="16" height="20"><path d="M1 1l13 7-6 2-2 7z" fill="currentColor" stroke="#000" stroke-width="1"/></svg><b>${name}</b></span>`;
-    layer.append(el);
-    return el;
-  });
-  const targets = () => $$(".hero h1, .hero .tagline, .hero .lead, .hero .btn, .hero .phone", hero);
-  const place = el => {
-    const ts = targets(); if (!ts.length) return;
-    const t = ts[Math.floor(Math.random() * ts.length)], h = hero.getBoundingClientRect(), r = t.getBoundingClientRect();
-    const pad = 6, x = r.left - h.left - pad, y = r.top - h.top - pad, w = r.width + pad * 2, ht = r.height + pad * 2;
-    el.style.setProperty("--x", x + "px"); el.style.setProperty("--y", y + "px");
-    el.style.setProperty("--w", w + "px"); el.style.setProperty("--h", ht + "px");
-    const cx = x + w * (.45 + Math.random() * .55), cy = y + ht * (.55 + Math.random() * .45);
-    el.style.setProperty("--cx", cx + "px"); el.style.setProperty("--cy", cy + "px");
-  };
-  let live = true;
-  new IntersectionObserver(es => { live = es[0].isIntersecting; }).observe(hero);
-  agents.forEach((el, i) => {
-    place(el);
-    el.classList.add("on");
-    const step = () => { if (live && !document.hidden) place(el); setTimeout(step, 2200 + Math.random() * 2600); };
-    setTimeout(step, 900 + i * 450);
-  });
 }
 // Floating dock: quick nav, search and style, always reachable (important on phones).
-function wireDock(site) {
-  const cur = location.pathname.split("/").pop() || "index.html";
-  const quick = [["index.html", "Home"], ["events.html", "Events"], ["team.html", "Team"], ["contact.html", "Join"]];
+function wireDock() {
+  const quick = [["home", "Home"], ["events", "Events"], ["team", "Team"], ["contact", "Join"]];
   const d = document.createElement("nav");
   d.className = "dock"; d.setAttribute("aria-label", "Quick navigation");
-  d.innerHTML = quick.map(([h, t]) => `<a href="${h}"${h === cur ? ' aria-current="page"' : ""}>${t}</a>`).join("") +
+  d.innerHTML = quick.map(([k, t]) => `<a href="${esc(U(k))}"${k === navKey ? ' aria-current="page"' : ""}>${t}</a>`).join("") +
     `<span class="sep"></span><button type="button" id="dock-s" aria-label="Open command menu">Search</button><button type="button" id="dock-k" aria-label="Change site style">Style</button>`;
   document.body.append(d);
   $("#dock-s").onclick = () => $("#open-pal").click();
@@ -312,18 +314,27 @@ function wireDock(site) {
   let last = scrollY;
   addEventListener("scroll", () => { const y = scrollY; d.classList.toggle("tuck", y > last + 6 && y > 400); if (Math.abs(y - last) > 6) last = y; }, {passive:true});
 }
-function wirePhone() {
-  const li = $$(".s-list li");
-  if (!li.length) return;
-  const desc = $("#s-desc");
-  let n = 0, timer;
-  const show = i => { li[n].classList.remove("on"); n = i; li[n].classList.add("on"); desc.textContent = li[n].dataset.d; };
-  const auto = () => { clearInterval(timer); if (!reduced) timer = setInterval(() => show((n + 1) % li.length), 2400); };
-  li.forEach((el, i) => {
-    el.onclick = () => { show(i); clearInterval(timer); setTimeout(auto, 9000); };
-  });
-  desc.onclick = () => { location.href = "event.html?e=" + encodeURIComponent(li[n].dataset.slug); };
-  auto();
+function wireStories() {
+  const st = $("#st"), data = window.__st;
+  if (!st || !data) return;
+  const slides = $$(".st-slide", st), bars = $$(".st-bars i", st);
+  let n = 0;
+  const need = i => { const im = $("img[data-src]", slides[i]); if (im) { im.src = im.dataset.src; im.removeAttribute("data-src"); } };
+  const show = i => {
+    n = (i + slides.length) % slides.length;
+    slides.forEach((s, k) => s.classList.toggle("on", k === n));
+    bars.forEach((b, k) => { b.className = k < n ? "done" : k === n ? "on" : ""; });
+    need(n); need((n + 1) % slides.length);
+    const e = data[n];
+    $("#st-sem").textContent = e.semester; $("#st-name").textContent = e.name; $("#st-desc").textContent = e.description;
+    $("#st-open").href = U("event", { e: e.slug });
+  };
+  st.addEventListener("animationend", e => { if (e.target.matches(".st-bars i.on b") && slides.length > 1) show(n + 1); });
+  st.addEventListener("error", e => { if (e.target.tagName === "IMG") e.target.remove(); }, true);
+  $(".st-nav.prev", st).onclick = () => show(n - 1);
+  $(".st-nav.next", st).onclick = () => show(n + 1);
+  st.addEventListener("keydown", e => { if (e.key === "ArrowRight") show(n + 1); else if (e.key === "ArrowLeft") show(n - 1); });
+  show(0);
 }
 function wireEvents() {
   const st = window.__ev;
@@ -341,7 +352,9 @@ function wireEvents() {
     if (st.y !== "all") p.set("y", st.y);
     if (st.q.trim()) p.set("q", st.q.trim());
     if (sk) p.set("skin", sk);
-    history.replaceState(null, "", "events.html" + (p.toString() ? "?" + p : ""));
+    const keep = new URLSearchParams(WP ? new URL(U("events"), location.href).search : "");
+    p.forEach((v, k) => keep.set(k, v));
+    history.replaceState(null, "", location.pathname + (keep.toString() ? "?" + keep : ""));
   };
   q.value = st.q;
   q.oninput = () => { st.q = q.value; draw(); };
@@ -400,7 +413,15 @@ function wireTeam() {
       lb.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
       lb.addEventListener("touchend", e => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) stepShot(lb, dx < 0 ? 1 : -1); }, { passive: true });
     }
+    // Gallery tiles follow each photo's shape: posters stand tall, panoramas go wide.
+    main.addEventListener("load", e => {
+      const b = e.target.tagName === "IMG" && e.target.closest(".gallery .shot"); if (!b) return;
+      const r = e.target.naturalWidth / Math.max(1, e.target.naturalHeight);
+      if (b.closest(".faces")) { if (r > 1.25) b.dataset.r = "land"; }
+      else if (r < .85) b.dataset.r = "tall"; else if (r > 1.9) b.dataset.r = "wide";
+    }, true);
     main.addEventListener("error", e => {
+      if (e.target.tagName === "IMG" && e.target.closest(".thumb, .pill, .reel-i")) { const k = e.target.closest(".pill, .reel-i"); (k || e.target).remove(); return; }
       const b = e.target.closest?.(".shot"); if (!b || e.target.tagName !== "IMG") return;
       const g = b.closest(".gallery"); b.remove();
       if (g && !$(".shot", g)) {
@@ -425,7 +446,7 @@ function wireTeam() {
     });
     const dl = lb && /^#photo-(\d+)$/.exec(location.hash);
     if (dl) { const b = $$(".shot:not([hidden])", main)[+dl[1] - 1]; if (b) { b.scrollIntoView({ block: "center" }); showShot(lb, b); lb.showModal(); } }
-    wirePalette(site, evs); wireMotion(); wirePhone(); wireEvents(); wireContactForm(site); wireTeam(); wireSwarm(); wireDock(site);
+    wirePalette(site, evs); wireMotion(); wireStories(); wireEvents(); wireContactForm(site); wireTeam(); wireDock();
     activate();
     document.documentElement.dataset.ready = "1";
   } catch (err) {
