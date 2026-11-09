@@ -74,6 +74,16 @@ test("unused photo is a warning only", () => {
 });
 test("team member without a name", () => fails(run(f => { f["content/team.json"].current[0].name = ""; }), /team\.json current #1 .*missing name/));
 test("team gallery without a label", () => fails(run(f => { delete f["content/team.json"].galleries[0].label; }), /gallery #1: missing label/));
+test("team gallery duplicate label", () => fails(run(f => { const g = f["content/team.json"].galleries; g.push({ label: "G", photos: [] }); }), /gallery #2 \(G\): duplicate label/));
+test("team gallery photos not an array", () => fails(run(f => { f["content/team.json"].galleries[0].photos = "photos/ev1/1.jpg"; }), /gallery #1 \(G\): photos must be an array/));
+test("team gallery photo missing on disk", () => fails(run(f => { f["content/team.json"].galleries[0].photos = ["photos/team/9.jpg"]; }), /team\.json gallery #1 \(G\): photo not found on disk: photos\/team\/9\.jpg/));
+test("team gallery gif photo", () => fails(run(f => { f["content/team.json"].galleries[0].photos = ["photos/team/1.gif"]; f["photos/team/1.gif"] = "x"; }), /gallery #1 \(G\): unsupported image type/));
+test("team gallery with an existing photo passes", () => {
+  const r = run(f => { f["content/team.json"].galleries[0].photos = ["photos/team/1.jpg"]; f["photos/team/1.jpg"] = "x"; });
+  assert.strictEqual(r.code, 0, r.out);
+  assert.match(r.out, /content ok/);
+  assert.doesNotMatch(r.out, /not used by any/);
+});
 test("site.json missing about.functions", () => fails(run(f => { delete f["content/site.json"].about.functions; }), /about\.functions must be an array/));
 test("site.json form_endpoint must be https", () => fails(run(f => { f["content/site.json"].contact.form_endpoint = "http://x"; }), /form_endpoint must be empty or start with https/));
 test("achievements app without a name", () => fails(run(f => { delete f["content/achievements.json"].apps[0].name; }), /achievements\.json: apps\[0\] missing name/));
