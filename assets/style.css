@@ -224,6 +224,7 @@ a.row:hover .arr{color:var(--pop);transform:translateX(5px)}
 .why .card:first-child :is(p,.idx),.apps .card:first-child :is(p,.idx){color:inherit;border-color:currentColor;opacity:.85}
 .people{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
 .person{padding:22px}
+@media(max-width:560px){.people{grid-template-columns:1fr 1fr;gap:10px}.person{padding:16px}.person .avatar{width:48px;height:48px;font-size:1rem;margin-bottom:18px}.person b{font-size:1rem}}
 .person .avatar{width:60px;height:60px;border-radius:50%;background:var(--surface2);color:var(--fg);display:grid;place-items:center;font:800 1.2rem var(--display);letter-spacing:-.03em;margin-bottom:26px;transition:background .2s,color .2s,rotate .3s var(--ease)}
 .person[data-g=Leadership] .avatar{background:var(--pop);color:var(--on-pop)}
 .person:hover .avatar{background:var(--accent);color:var(--on-accent);rotate:-8deg}
