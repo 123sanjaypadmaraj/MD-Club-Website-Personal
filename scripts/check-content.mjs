@@ -102,6 +102,14 @@ try {
     const ep = site.contact?.form_endpoint;
     if (typeof ep !== "string") errors.push("site.json: contact.form_endpoint must be a string");
     else if (ep.trim() && !/^https:\/\//.test(ep.trim())) errors.push("site.json: contact.form_endpoint must be empty or start with https://");
+    const an = site.announcement;
+    if (an !== undefined) {
+      if (!an || typeof an !== "object" || Array.isArray(an) || ["text", "link", "link_label"].some(k => an[k] !== undefined && typeof an[k] !== "string")) errors.push("site.json: announcement must be an object of strings (text, link, link_label)");
+      else if (an.link?.trim()) {
+        if (!/^(https:\/\/\S+|[\w-]+\.html([?#]\S*)?)$/.test(an.link.trim())) errors.push("site.json: announcement.link must start with https:// or be a local .html path");
+        if (!an.text?.trim()) errors.push("site.json: announcement.link is set but announcement.text is empty");
+      }
+    }
     for (const k of ["email", "phone"]) if (site.contact?.[k] !== undefined && typeof site.contact[k] !== "string") errors.push(`site.json: contact.${k} must be a string`);
     const em = site.contact?.email?.trim?.(), ph = site.contact?.phone?.trim?.();
     if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) errors.push("site.json: contact.email is not a valid email address");
@@ -185,17 +193,6 @@ try {
   if (typeof ig === "string" && ig) for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
     const ns = readFileSync(join(root, f), "utf8").match(/<noscript>[\s\S]*?<\/noscript>/)?.[0];
     if (ns && !ns.includes(ig)) errors.push(`${f}: <noscript> fallback does not link site.json instagram`);
-  }
-} catch {}
-
-// Every <noscript> fallback must link the club Instagram from site.json, so no-JS visitors are not at a dead end.
-try {
-  const ig = docs["site.json"]?.instagram;
-  if (typeof ig === "string" && ig.trim()) {
-    for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
-      const ns = readFileSync(join(root, f), "utf8").match(/<noscript>[\s\S]*?<\/noscript>/)?.[0];
-      if (ns && !ns.includes(ig.trim())) errors.push(`${f}: <noscript> fallback does not link site.json instagram`);
-    }
   }
 } catch {}
 

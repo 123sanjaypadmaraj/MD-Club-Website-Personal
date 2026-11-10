@@ -139,4 +139,7 @@ test("JSON-LD foundingDate that differs from site.json fails", () => fails(run(f
 test("JSON-LD matching site.json passes", () => { const r = run(f => { f["index.html"] = ld({}) + f["index.html"]; }); assert.strictEqual(r.code, 0, r.out); });
 
 test("noscript fallback without the site.json instagram link fails", () => fails(run(f => { f["index.html"] = page("<noscript><p>needs JS</p></noscript>"); }), /noscript> fallback does not link site.json instagram/));
-test("noscript fallback without the Instagram link fails", () => fails(run(f => { f["index.html"] = f["index.html"].replace("</a>", "</a><noscript><p>needs JS</p></noscript>"); }), /index\.html: <noscript> fallback does not link site\.json instagram/));
+
+test("announcement with an http link fails", () => fails(run(f => { f["content/site.json"].announcement = { text: "Hi", link: "http://x.example", link_label: "" }; }), /announcement\.link must start with https/));
+test("announcement link without text fails", () => fails(run(f => { f["content/site.json"].announcement = { text: "", link: "events.html", link_label: "" }; }), /announcement\.text is empty/));
+test("empty announcement passes", () => { const r = run(f => { f["content/site.json"].announcement = { text: "", link: "", link_label: "" }; }); assert.strictEqual(r.code, 0, r.out); });

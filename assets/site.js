@@ -96,7 +96,9 @@ const pages = {
     const flags = events.filter(e => e.flagship);
     const words = site.hero_title.split(" ").map((w, i) => `<span class="w" style="--i:${i}">${esc(w)}</span>`).join(" ");
     const marquee = [...events, ...events].map(e => `<span>${esc(e.name)}</span>`).join("");
-    return `<section class="hero wrap"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}_</p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
+    const an = site.announcement || {}, anText = String(an.text || "").trim(), anLink = String(an.link || "").trim();
+    const announce = anText ? `<section class="wrap"><p class="announce" role="note">${esc(anText)}${/^(https:\/\/|[\w-]+\.html)/.test(anLink) ? ` <a href="${esc(anLink)}">${esc(an.link_label || "Details")}</a>` : ""}</p></section>` : "";
+    return announce + `<section class="hero wrap"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}_</p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
 <p><a class="btn primary" href="contact.html">Join the club</a><a class="btn" href="events.html">See our events</a></p></div>${phone(events)}</section>
 <div class="marquee" aria-hidden="true"><div class="track">${marquee}</div></div>
 <section class="wrap"><div class="stats">${site.stats.map(s => `<div class="stat reveal"><b data-count>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join("")}</div></section>

@@ -130,6 +130,8 @@ a.row:hover .row-main b{color:var(--accent-text)}
 .person b{display:block;font-size:1.05rem}
 .person small{font-family:var(--mono);font-size:.78rem}
 .cta{border:var(--bw) solid var(--line);border-radius:calc(var(--radius)*1.5);padding:clamp(32px,6vw,72px) clamp(22px,5vw,60px);background:var(--grad);color:var(--on-accent);box-shadow:var(--shadow)}
+.announce{border:1px solid var(--line);border-radius:6px;padding:10px 14px;margin:16px 0 0;color:var(--fg)}
+.announce a{margin-left:8px;color:var(--accent-text);text-decoration:underline}
 .cta .lead{color:inherit;opacity:.85;margin-bottom:28px}
 .cta h2{max-width:720px;font-size:clamp(2rem,5vw,3.8rem)}
 .cta .btn{background:rgba(0,0,0,.35);color:#fff;border-color:rgba(255,255,255,.25);backdrop-filter:blur(8px)}
