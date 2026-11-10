@@ -11,3 +11,7 @@ and warns about files over 500 KB.
 ## Team galleries
 
 Team photos live in `photos/team/<year or label>/<n>.jpg` and are listed in `content/team.json` under `galleries[].photos`. Each gallery needs a unique `label`.
+
+## Photos on the team cards
+
+A person in `current` or `earlier` can have an optional `"photo": "photos/team/26-27/1.png"`. The card then shows that picture next to the name; without it (or if the file fails to load) the card shows the person's initials.

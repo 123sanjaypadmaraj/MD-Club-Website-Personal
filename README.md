@@ -32,6 +32,12 @@ Open `http://localhost:8000/admin/cms/`. `local_backend: true` skips login and e
 These stay empty until the club supplies them; the site works without them.
 - **Join form (Formspree).** Create a form at formspree.io, copy its `https://formspree.io/f/<id>` URL and paste it into "Form endpoint" (`contact.form_endpoint` in `content/site.json`). While empty, the Contact page shows an Instagram notice instead of the form. The CSP already allows `https:` for `form-action` and `connect-src`.
 - **Contact email and phone** ("Contact email" / "Contact phone", `contact.email` / `contact.phone`). Each shows a card on the Contact page only when filled in.
+- **AI chat assistant (Groq).** The assistant page (`chat.html`) and the "Ask MAD Club" link stay hidden until "Assistant URL" (`chat.endpoint` in `content/site.json`) is filled in. The Groq key must never go into the site, because every file here is public; it lives in the backend in `chatbot/`, which runs as a free Hugging Face Space (Docker), the same way as the STEM club backend. One-time setup:
+  1. Create a Space at huggingface.co/new-space with the Docker SDK and upload everything inside `chatbot/` to it.
+  2. In the Space settings, under "Variables and secrets", add the secret `GROQ_API_KEY`. If the site is not at the default address, also set the variables `SITE_URL` and `ALLOWED_ORIGINS` (see `chatbot/README.md`).
+  3. When the Space is running, put `https://<user>-<space>.hf.space/ask` into "Assistant URL" (Contact and basics tab) and publish.
+
+  How it answers: the backend reads `content/*.json` from the live site (again every 10 minutes), splits it into one chunk per topic (each event, the core team, contact details and so on), embeds the chunks with `all-MiniLM-L6-v2` into a FAISS index, and sends only the best matches for each question to Groq with a strict system prompt (`chatbot/rag.py`). So it can only repeat what is published on the site: edit the site and the assistant follows, with nothing to retrain. Questions with no match on the site are refused before Groq is called; the rest are held to the site by the prompt. It refuses other origins and more than 10 questions a minute per visitor. `.github/workflows/chat-keepalive.yml` pings the Space every 6 hours so it does not go to sleep. Run `python -m unittest test_rag` inside `chatbot/` after changing the knowledge base or prompt.
 - **Current team year.** `content/team.json` `current_year` is "2025-26" but there is also a "Team 2026-27" gallery. Only the club knows which is right; it has not been changed.
 
 ## Looks
@@ -44,6 +50,7 @@ Four skins share one structure: Nebula (violet and lime, the default), Ocean (bl
 - The photo reel ("Seen at our events") and the event rows use the first photos of each event, so adding photos to an event in either editor updates the home page too.
 - Gallery tiles follow each photo's shape (posters stand tall, team portraits are round).
 - Ctrl+K (or the Search button) opens a command menu for pages, events and styles. Press `/` on the Events page to jump to search.
+- The assistant page works like a chat app: suggested questions on an empty chat, Enter to send (Shift+Enter for a new line), a list of earlier chats kept in that browser, and links to the pages an answer came from.
 - On phones the site has a bottom tab bar (Home, Events, Team, Join, Search, Style) and a full-screen menu.
 
 ## WordPress theme

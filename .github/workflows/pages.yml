@@ -24,6 +24,8 @@ jobs:
         run: node --check assets/site.js && node --check admin/admin.js && node --check scripts/check-content.mjs && node --check scripts/smoke.mjs && node --check scripts/check-content.test.mjs
       - name: Run tests
         run: node --test scripts/*.test.mjs
+      - name: Test the assistant's knowledge base
+        run: cd chatbot && python3 -m unittest test_rag
       - name: Validate content
         run: node scripts/check-content.mjs
       - name: Stage public files

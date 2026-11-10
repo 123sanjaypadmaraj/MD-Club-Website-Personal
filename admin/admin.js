@@ -32,7 +32,9 @@ const TABS = [
     { t: "object", key: "contact", label: "Contact page", fields: [
       str("coordinators", "Coordinators"),
       str("form_endpoint", "Form endpoint (Formspree URL; leave empty to hide the form)"),
-      str("email", "Contact email (leave empty to hide)"), str("phone", "Contact phone (leave empty to hide)")] }] },
+      str("email", "Contact email (leave empty to hide)"), str("phone", "Contact phone (leave empty to hide)")] },
+    { t: "object", key: "chat", label: "AI chat assistant", fields: [
+      { ...str("endpoint", "Assistant URL (the /ask address of the chatbot backend; leave empty to hide the chat)"), check: v => !(v || "").trim() || /^https:\/\/\S+$/.test(v.trim()) ? "" : "Use a full https:// address, or leave empty." }] }] },
   { id: "events", label: "Events", file: "events", preview: "../events.html", defs: [
     list("events", "Events", [
       { ...str("slug", "URL slug (letters, numbers, dashes)"), check: (v, o) => !/^[a-z0-9-]+$/.test(v || "") ? "Use lowercase letters, numbers and dashes only." : (data.events?.events || []).filter(e => e !== o && e.slug === v).length ? "Another event already uses this slug." : "" },
@@ -43,8 +45,8 @@ const TABS = [
       i => i.semester)] },
   { id: "team", label: "Team", file: "team", preview: "../team.html", defs: [
     str("current_year", "Current team year"),
-    list("current", "Current team", [str("name", "Name"), str("role", "Role")], i => i.name, null, i => i.role),
-    list("earlier", "Earlier teams", [str("name", "Name"), str("role", "Role"), str("year", "Year")], i => i.name, null, i => `${i.role}, ${i.year}`),
+    list("current", "Current team", [str("name", "Name"), str("role", "Role"), { t: "image", key: "photo", label: "Photo (optional; initials show without one)" }], i => i.name, null, i => i.role),
+    list("earlier", "Earlier teams", [str("name", "Name"), str("role", "Role"), str("year", "Year"), { t: "image", key: "photo", label: "Photo (optional; initials show without one)" }], i => i.name, null, i => `${i.role}, ${i.year}`),
     list("galleries", "Team photo galleries", [str("label", "Gallery title"), { t: "images", key: "photos", label: "Photos" }], i => i.label, () => ({ label: "New gallery", photos: [] }), i => `${(i.photos || []).length} photos`)] },
   { id: "achievements", label: "Achievements", file: "achievements", preview: "../achievements.html", defs: [
     list("stats", "Figures", [str("value", "Figure"), str("label", "Label")], i => `${i.value} ${i.label}`),
@@ -105,6 +107,7 @@ function field(def, obj, onChange) {
     fs.append(lg, ...def.fields.map(f => field(f, obj[def.key], onChange))); return fs;
   }
   if (def.t === "images") return images(def, obj, onChange);
+  if (def.t === "image") return image(def, obj, onChange);
   if (def.t === "list") return listField(def, obj, onChange);
   throw new Error(`Unknown field type "${def.t}" for "${def.key}"`);
 }
@@ -137,7 +140,7 @@ function listField(def, obj, onChange) {
     });
   };
   add.onclick = () => {
-    arr.unshift(def.blank ? def.blank() : Object.fromEntries(def.fields.map(f => [f.key, f.t === "bool" ? false : f.t === "images" ? [] : ""])));
+    arr.unshift(def.blank ? def.blank() : Object.fromEntries(def.fields.map(f => [f.key, f.t === "bool" ? false : f.t === "images" ? [] : ""]).filter(([k]) => def.fields.find(f => f.key === k).t !== "image")));
     draw(); box.querySelector("details").open = true; onChange();
   };
   def.summary ||= i => i.name || i.title;
@@ -164,6 +167,23 @@ function images(def, obj, onChange) {
     for (const f of inp.files) obj[def.key].push(await shrink(f));
     inp.value = ""; draw(); onChange();
   };
+  draw(); return w;
+}
+function image(def, obj, onChange) {
+  const w = document.createElement("div"); w.className = "field";
+  w.innerHTML = `<span></span><div class="thumbs"></div><input type="file" accept="image/*">`;
+  $("span", w).textContent = def.label;
+  const th = $(".thumbs", w), inp = $("input", w);
+  const draw = () => {
+    th.innerHTML = "";
+    const src = obj[def.key]; if (!src) return;
+    const d = document.createElement("div"); d.className = "thumb";
+    const im = new Image(); im.src = /^(data:|https?:|[/])/.test(src) ? src : "../" + src; im.alt = "";
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "Remove";
+    b.onclick = () => { delete obj[def.key]; draw(); onChange(); };
+    d.append(im, b); th.append(d);
+  };
+  inp.onchange = async () => { if (inp.files[0]) obj[def.key] = await shrink(inp.files[0]); inp.value = ""; draw(); onChange(); };
   draw(); return w;
 }
 function shrink(file) {
@@ -215,6 +235,13 @@ function start() {
     }
     if (cur.file === "team") {
       out = JSON.parse(JSON.stringify(out));
+      for (const m of [...(out.current || []), ...(out.earlier || [])]) {
+        if (!m.photo) { delete m.photo; continue; }
+        if (!String(m.photo).startsWith("data:")) continue;
+        const who = String(m.name || "member").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "member";
+        save1(await (await fetch(m.photo)).blob(), `team-people-${who}.jpg`); n++;
+        m.photo = `photos/team/people/${who}.jpg`;
+      }
       for (const g of out.galleries || []) {
         const slug = String(g.label || "gallery").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "gallery";
         g.photos = await Promise.all((g.photos || []).map(async (src, i) => {
@@ -226,7 +253,7 @@ function start() {
       }
     }
     save1(new Blob([JSON.stringify(out, null, 2) + "\n"], { type: "application/json" }), cur.file + ".json");
-    setStatus(n ? `Downloaded ${cur.file}.json and ${n} photos. Move each photo into the folder named in the JSON (photos/<name>/) and rename it to just its number (1.jpg, 2.jpg...), then replace content/${cur.file}.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
+    setStatus(n ? `Downloaded ${cur.file}.json and ${n} photos. Move each photo into the folder named in the JSON (photos/<name>/) and rename it to the file name the JSON gives it (1.jpg, 2.jpg...), then replace content/${cur.file}.json.` : `Downloaded ${cur.file}.json. Replace content/${cur.file}.json with it and commit to publish.`, false);
   };
   $("#reset").onclick = async () => {
     if (!confirm("Discard your saved draft for this file and go back to the published content?")) return;

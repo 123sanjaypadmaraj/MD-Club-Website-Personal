@@ -4,7 +4,7 @@ addEventListener("unhandledrejection", e => { document.documentElement.dataset.j
 document.addEventListener("securitypolicyviolation", e => { document.documentElement.dataset.cspViolation = e.violatedDirective; });
 // The WordPress theme ships this same file and injects window.MAD_WP = { content, urls, base }; the static site leaves it unset.
 const WP = window.MAD_WP || null;
-const FILES = { home: "index.html", events: "events.html", event: "event.html", about: "about.html", achievements: "achievements.html", team: "team.html", contact: "contact.html" };
+const FILES = { home: "index.html", events: "events.html", event: "event.html", about: "about.html", achievements: "achievements.html", team: "team.html", contact: "contact.html", chat: "chat.html" };
 const U = (k, q) => { const b = WP ? WP.urls[k] : FILES[k], s = q ? new URLSearchParams(q).toString() : ""; return s ? b + (b.includes("?") ? "&" : "?") + s : b; };
 const NAV = [["home","Home"],["events","Events"],["about","About"],["achievements","Achievements"],["team","Team"],["contact","Contact"]];
 const SKINS = [["nebula","Nebula"],["ocean","Ocean"],["aurora","Aurora"],["solar","Solar"]];
@@ -203,7 +203,7 @@ ${(site.college_page || "").trim() ? `<p class="lead"><a class="ul" href="${esc(
   async team() {
     const t = await load("team");
     const grp = r => /program/i.test(r) ? "Program" : /project/i.test(r) ? "Project" : /marketing/i.test(r) ? "Marketing" : /review/i.test(r) ? "Review" : "Leadership";
-    const person = (p, sub, g) => `<div class="card person reveal" data-g="${g}"><div class="avatar">${esc(initials(p.name))}</div><b>${esc(p.name)}</b><small>${esc(sub)}</small></div>`;
+    const person = (p, sub, g) => `<div class="card person reveal" data-g="${g}"><div class="avatar">${esc(initials(p.name))}${p.photo ? `<img loading="lazy" decoding="async" src="${esc(photoSrc(p.photo))}" alt="">` : ""}</div><b>${esc(p.name)}</b><small>${esc(sub)}</small></div>`;
     const groups = ["Leadership", "Program", "Project", "Marketing", "Review"];
     return head("The team", "The people behind MAD.") +
       `<div class="wrap tools"><div class="chips" id="tchips"><button type="button" class="chip" data-g="all" aria-pressed="true">All</button>${groups.map(g => `<button type="button" class="chip" data-g="${g}" aria-pressed="false">${g}</button>`).join("")}</div></div>
@@ -212,6 +212,20 @@ ${(site.college_page || "").trim() ? `<p class="lead"><a class="ul" href="${esc(
 ${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="gallery faces">${g.photos.map((p, i) => shot(p, `${g.label}, photo ${i + 1}`)).join("")}</div>`).join("")}</div>`;
   },
 
+  // Full-page assistant (ChatGPT-style). The markup is static; wireChatPage() drives it.
+  async chat(site) {
+    if (!String(site.chat?.endpoint || "").trim())
+      return head("Assistant", "The assistant is not switched on yet.", "Until it is, the quickest way to get an answer is Instagram.") + `<div class="wrap"><a class="btn primary" href="${esc(site.instagram)}">${esc(site.instagram_handle)} on Instagram ${ARROW}</a></div>`;
+    return `<div class="gpt" id="gpt"><aside class="gpt-side" id="gpt-side" aria-label="Your chats">
+<button type="button" class="gpt-new" id="gpt-new"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>New chat</button>
+<p class="gpt-cap">Recent</p><ul id="gpt-list"></ul><p class="gpt-foot">Chats are saved in this browser only.</p></aside>
+<div class="gpt-shade" id="gpt-shade" hidden></div>
+<section class="gpt-main"><div class="gpt-top"><button type="button" class="gpt-ic" id="gpt-menu" aria-expanded="false" aria-controls="gpt-side">Chats</button><h1>${esc(site.name)} assistant</h1><button type="button" class="gpt-ic" id="gpt-new2">New chat</button></div>
+<div class="gpt-scroll" id="gpt-scroll"><div class="gpt-col" id="gpt-log" role="log" aria-live="polite"></div></div>
+<form class="gpt-form" id="gpt-form"><div class="gpt-box"><textarea id="gpt-q" rows="1" maxlength="500" placeholder="Ask anything about ${esc(site.name)}" aria-label="Your question"></textarea>
+<button type="submit" id="gpt-send" aria-label="Send" disabled><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+<p class="gpt-note">Answers come only from this website and can still be wrong. For anything important, ask on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a>.</p></form></section></div>`;
+  },
   async notfound() {
     return head("404", "Page not found.", "That page does not exist.") + `<div class="wrap"><p class="back"><a class="btn primary" href="${esc(U("home"))}">Home</a><a class="btn" href="${esc(U("events"))}">Events</a></p></div>`;
   },
@@ -317,6 +331,143 @@ function wireDock() {
   $("#dock-k").onclick = () => { const k = SKINS.map(s => s[0]); setSkin(k[(k.indexOf(root.dataset.skin) + 1) % k.length]); };
   let last = scrollY;
   addEventListener("scroll", () => { const y = scrollY; d.classList.toggle("tuck", y > last + 6 && y > 400); if (Math.abs(y - last) > 6) last = y; }, {passive:true});
+}
+// Chat assistant. Both parts appear only when site.json chat.endpoint is set (the /ask URL of the backend in chatbot/).
+// Every page gets a floating link to the assistant; chat.html is the full-page chat.
+function wireChatFab(site) {
+  if (page === "chat" || !String(site.chat?.endpoint || "").trim() || (WP && !WP.urls.chat)) return;
+  document.body.insertAdjacentHTML("beforeend", `<a class="chat-fab" id="chat-open" href="${esc(U("chat"))}">Ask ${esc(site.name)}</a>`);
+}
+function wireChatPage(site) {
+  const g = $("#gpt");
+  if (!g) return;
+  const ep = site.chat.endpoint.trim(), KEY = "mad_chats", MAX = 500;
+  const log = $("#gpt-log"), scroll = $("#gpt-scroll"), q = $("#gpt-q"), send = $("#gpt-send"), list = $("#gpt-list"), menu = $("#gpt-menu"), shade = $("#gpt-shade");
+  const SUGGEST = ["Who is on the core team?", "What events has the club run?", "How do I join?", "What apps have members built?"];
+  let chats = [], cur = null, busy = false;
+  try { chats = (JSON.parse(localStorage.getItem(KEY)) || []).filter(c => c && typeof c.id === "string" && Array.isArray(c.msgs)); } catch {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(chats.slice(0, 20))); } catch {} };
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+  const toEnd = () => { scroll.scrollTop = scroll.scrollHeight; };
+  const setSend = () => { send.disabled = busy || !q.value.trim(); };
+  const grow = () => { q.style.height = "auto"; q.style.height = Math.min(200, q.scrollHeight) + "px"; };
+
+  // Answers are plain text. Only bullets, **bold** and https links are turned into elements; nothing is ever set as HTML.
+  const inline = (to, s) => {
+    for (const part of s.split(/(\*\*[^*]+\*\*|https:\/\/[^\s<>"')]*[^\s<>"').,;:!?])/)) {
+      if (/^\*\*[^*]+\*\*$/.test(part)) to.append(el("strong", "", part.slice(2, -2)));
+      else if (/^https:\/\//.test(part)) { const a = el("a", "", part.replace(/^https:\/\/(www\.)?/, "")); a.href = part; a.rel = "noopener"; to.append(a); }
+      else if (part) to.append(part);
+    }
+  };
+  const rich = (to, text) => {
+    to.textContent = "";
+    let ul = null;
+    for (const line of String(text).split("\n")) {
+      const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+      if (m) { if (!ul) { ul = el("ul"); to.append(ul); } const li = el("li"); inline(li, m[1]); ul.append(li); }
+      else { ul = null; if (line.trim()) { const p = el("p"); inline(p, line.trim()); to.append(p); } }
+    }
+  };
+  const okPage = p => typeof p === "string" && /^[a-z0-9-]+\.html(\?e=[a-z0-9-]+)?$/.test(p);
+  const fillBot = (row, m) => {
+    const body = $(".gpt-body", row);
+    body.textContent = "";
+    const text = el("div", "gpt-text"); rich(text, m.content); body.append(text);
+    const src = WP ? [] : (m.sources || []).filter(s => s && okPage(s.page) && typeof s.title === "string");
+    if (src.length) {
+      const p = el("p", "gpt-src", "From the site: ");
+      for (const s of src) { const a = el("a", "", s.title.slice(0, 60)); a.href = s.page; p.append(a); }
+      body.append(p);
+    }
+    const acts = el("div", "gpt-acts"), copy = el("button", "", "Copy");
+    copy.type = "button";
+    copy.onclick = async () => { try { await navigator.clipboard.writeText(m.content); copy.textContent = "Copied"; } catch { copy.textContent = "Copy failed"; } setTimeout(() => { copy.textContent = "Copy"; }, 1600); };
+    acts.append(copy); body.append(acts);
+    row.dataset.done = "1";
+  };
+  const addMsg = m => {
+    const row = el("div", "gpt-msg " + (m.role === "user" ? "user" : "bot"));
+    if (m.role === "user") row.append(el("div", "gpt-bubble", m.content));
+    else { row.append(el("span", "gpt-av", String(site.name || "M")[0]), el("div", "gpt-body")); $(".gpt-av", row).setAttribute("aria-hidden", "true"); if (m.content) fillBot(row, m); }
+    log.append(row); toEnd();
+    return row;
+  };
+  const drawList = () => {
+    list.textContent = "";
+    if (!chats.length) { list.append(el("li", "gpt-none", "No chats yet")); return; }
+    for (const c of chats) {
+      const li = el("li"), open = el("button", "gpt-chat", c.title || "Chat"), del = el("button", "gpt-del", "×");
+      li.setAttribute("aria-current", c === cur);
+      open.type = del.type = "button"; open.title = c.title || "Chat";
+      open.onclick = () => openChat(c);
+      del.setAttribute("aria-label", "Delete chat: " + (c.title || "Chat"));
+      del.onclick = () => { chats = chats.filter(x => x !== c); save(); if (cur === c) newChat(); else drawList(); };
+      li.append(open, del); list.append(li);
+    }
+  };
+  const setSide = o => { g.classList.toggle("side-open", o); menu.setAttribute("aria-expanded", o); shade.hidden = !o; };
+  const empty = () => {
+    log.textContent = "";
+    const box = el("div", "gpt-empty"), chips = el("div", "gpt-chips");
+    box.append(el("span", "gpt-av lg", String(site.name || "M")[0]), el("h2", "", `What would you like to know about ${site.name}?`), el("p", "", "I answer from this website: events, the team, what the club does and how to join."));
+    for (const s of SUGGEST) { const b = el("button", "", s); b.type = "button"; b.onclick = () => ask(s); chips.append(b); }
+    box.append(chips); log.append(box);
+  };
+  function newChat() { cur = null; empty(); drawList(); setSide(false); q.focus(); }
+  function openChat(c) { cur = c; log.textContent = ""; c.msgs.forEach(addMsg); drawList(); setSide(false); toEnd(); q.focus(); }
+  // Reveals the answer a few words at a time, then swaps in the formatted version.
+  const type = (row, m) => new Promise(done => {
+    const words = m.content.split(/(\s+)/), body = $(".gpt-body", row), t = el("div", "gpt-text typing");
+    if (reduced || words.length < 4) { fillBot(row, m); done(); return; }
+    body.textContent = ""; body.append(t);
+    let n = 0;
+    const tick = () => {
+      n = Math.min(words.length, n + 6);
+      t.textContent = words.slice(0, n).join("");
+      toEnd();
+      if (n < words.length) setTimeout(tick, 28); else { fillBot(row, m); toEnd(); done(); }
+    };
+    tick();
+  });
+  async function ask(text) {
+    text = String(text).trim().slice(0, MAX);
+    if (!text || busy) return;
+    busy = true; q.value = ""; grow(); setSend();
+    if (!cur) { cur = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), title: text.slice(0, 60), at: Date.now(), msgs: [] }; chats.unshift(cur); log.textContent = ""; }
+    const history = cur.msgs.slice(-8).map(({ role, content }) => ({ role, content }));
+    const userMsg = { role: "user", content: text }, chat = cur;
+    chat.msgs.push(userMsg);
+    const userRow = addMsg(userMsg), row = addMsg({ role: "assistant", content: "" });
+    $(".gpt-body", row).innerHTML = `<span class="gpt-dots" role="status" aria-label="Thinking"><i></i><i></i><i></i></span>`;
+    drawList(); save(); toEnd();
+    try {
+      const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text, history }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || typeof d.answer !== "string" || !d.answer.trim()) throw new Error(typeof d.error === "string" ? d.error : "");
+      const m = { role: "assistant", content: d.answer.trim(), sources: Array.isArray(d.sources) ? d.sources.filter(s => s && okPage(s.page) && typeof s.title === "string").slice(0, 3) : [] };
+      chat.msgs.push(m); save();
+      if (cur === chat && row.isConnected) await type(row, m);
+    } catch (err) {
+      chat.msgs = chat.msgs.filter(x => x !== userMsg); save();
+      if (row.isConnected) {
+        const body = $(".gpt-body", row), retry = el("button", "btn", "Try again");
+        body.textContent = "";
+        const p = el("p", "gpt-err", err.message || "Could not reach the assistant. Check your connection and try again."); p.setAttribute("role", "alert");
+        retry.type = "button"; retry.onclick = () => { userRow.remove(); row.remove(); ask(text); };
+        body.append(p, retry); row.dataset.done = "1"; toEnd();
+      }
+    }
+    busy = false; setSend(); q.focus();
+  }
+  $("#gpt-form").onsubmit = e => { e.preventDefault(); ask(q.value); };
+  q.addEventListener("input", () => { grow(); setSend(); });
+  q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask(q.value); } });
+  $("#gpt-new").onclick = $("#gpt-new2").onclick = newChat;
+  menu.onclick = () => setSide(!g.classList.contains("side-open"));
+  shade.onclick = () => setSide(false);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") setSide(false); });
+  empty(); drawList(); setSend();
 }
 function wireStories() {
   const st = $("#st"), data = window.__st;
@@ -425,7 +576,7 @@ function wireTeam() {
       else if (r < .85) b.dataset.r = "tall"; else if (r > 1.9) b.dataset.r = "wide";
     }, true);
     main.addEventListener("error", e => {
-      if (e.target.tagName === "IMG" && e.target.closest(".thumb, .pill, .reel-i")) { const k = e.target.closest(".pill, .reel-i"); (k || e.target).remove(); return; }
+      if (e.target.tagName === "IMG" && e.target.closest(".thumb, .pill, .reel-i, .avatar")) { const k = e.target.closest(".pill, .reel-i"); (k || e.target).remove(); return; }
       const b = e.target.closest?.(".shot"); if (!b || e.target.tagName !== "IMG") return;
       const g = b.closest(".gallery"); b.remove();
       if (g && !$(".shot", g)) {
@@ -450,7 +601,7 @@ function wireTeam() {
     });
     const dl = lb && /^#photo-(\d+)$/.exec(location.hash);
     if (dl) { const b = $$(".shot:not([hidden])", main)[+dl[1] - 1]; if (b) { b.scrollIntoView({ block: "center" }); showShot(lb, b); lb.showModal(); } }
-    wirePalette(site, evs); wireMotion(); wireStories(); wireEvents(); wireContactForm(site); wireTeam(); wireDock();
+    wirePalette(site, evs); wireMotion(); wireStories(); wireEvents(); wireContactForm(site); wireTeam(); wireDock(); wireChatFab(site); wireChatPage(site);
     activate();
     document.documentElement.dataset.ready = "1";
   } catch (err) {
