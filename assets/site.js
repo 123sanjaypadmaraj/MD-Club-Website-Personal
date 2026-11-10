@@ -140,8 +140,12 @@ const pages = {
     const pill = pp ? ` <span class="pill w" style="--i:${cutAt + 1}"><img src="${esc(photoSrc(pp))}" alt=""></span>` : "";
     const words = hw.map((w, i) => `<span class="w${split && i > cutAt ? " w2" : ""}" style="--i:${i + (split && i > cutAt ? 1 : 0)}">${esc(w)}</span>${split && i === cutAt ? pill : ""}`).join(" ");
     const marquee = [...events, ...events].map(e => `<span>${esc(e.name)}</span>`).join("");
+    const an = site.announcement || {}, anText = String(an.text || "").trim(), anLink = String(an.link || "").trim();
+    const anKey = WP && Object.keys(FILES).find(k => FILES[k] === anLink.split(/[?#]/)[0]);
+    const anHref = anKey ? U(anKey, anLink.includes("?") ? anLink.split("?")[1].split("#")[0] : "") : anLink;
+    const announce = anText ? `<div class="wrap announce-w"><p class="announce" role="note"><i aria-hidden="true"></i><span>${esc(anText)}</span>${/^(https:\/\/|[\w-]+\.html)/.test(anLink) ? ` <a href="${esc(anHref)}">${esc(an.link_label || "Details")} ${ARROW}</a>` : ""}</p></div>` : "";
     const rl = reel(events);
-    return `<section class="hero"><div class="wrap hero-in"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}<i class="caret">_</i></p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
+    return announce + `<section class="hero"><div class="wrap hero-in"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}<i class="caret">_</i></p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
 <p class="hero-cta"><a class="btn primary" href="${esc(U("contact"))}">Join the club ${ARROW}</a><a class="btn" href="${esc(U("events"))}">See our events</a></p></div>${stories(site, events)}</div></section>
 <div class="marquee" aria-hidden="true"><div class="track">${marquee}</div></div>
 <section class="wrap"><div class="stats">${site.stats.map(stat).join("")}</div></section>

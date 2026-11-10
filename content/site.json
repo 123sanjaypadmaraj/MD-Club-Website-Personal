@@ -29,6 +29,7 @@
     { "title": "Real community", "text": "Creativity, teamwork, entrepreneurship and learning." },
     { "title": "Career ready", "text": "Collaboration skills for professional settings." }
   ],
+  "announcement": { "text": "", "link": "", "link_label": "" },
   "cta_title": "New members welcome every semester",
   "cta_text": "Hackathons, design sprints and a community that ships.",
   "about": {

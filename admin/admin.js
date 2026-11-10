@@ -19,7 +19,9 @@ const TABS = [
     list("highlights", "Highlights", pair, i => i.title),
     str("why_title", "Why-join heading"), txt("why_lead", "Why-join intro"),
     list("why", "Why-join points", pair, i => i.title),
-    str("cta_title", "Call-to-action heading"), str("cta_text", "Call-to-action text")] },
+    str("cta_title", "Call-to-action heading"), str("cta_text", "Call-to-action text"),
+    { t: "object", key: "announcement", label: "Announcement strip", fields: [
+      str("text", "Announcement text (leave empty to hide)"), str("link", "Announcement link (optional)"), str("link_label", "Link text (optional)")] }] },
   { id: "about", label: "About page", file: "site", preview: "../about.html", defs: [
     { t: "object", key: "about", label: "About page text", fields: [
       txt("who", "Who we are"), txt("objective", "Objective"), txt("outcomes", "Outcomes"),

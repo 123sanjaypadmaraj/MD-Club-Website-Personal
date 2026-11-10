@@ -53,6 +53,14 @@ collections:
               - { name: text, label: Text, widget: text }
           - { name: cta_title, label: Call-to-action heading, widget: string }
           - { name: cta_text, label: Call-to-action text, widget: string }
+          - name: announcement
+            label: Announcement strip (leave text empty to hide)
+            widget: object
+            required: false
+            fields:
+              - { name: text, label: Announcement text, widget: string, required: false }
+              - { name: link, label: Announcement link, widget: string, required: false }
+              - { name: link_label, label: Link text, widget: string, required: false }
           - name: about
             label: About page
             widget: object

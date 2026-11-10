@@ -246,6 +246,17 @@ a.row:hover .arr{color:var(--pop);transform:translateX(5px)}
 .cta .btn.primary:hover{background:var(--pop);border-color:var(--pop);color:var(--on-pop)}
 :root[data-skin=solar] .cta .btn.primary{color:var(--accent-text)}
 
+/* home-page announcement strip */
+.announce-w{padding-top:clamp(14px,2vw,24px)}
+.announce{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:12px 18px;border-radius:999px;background:var(--pop);color:var(--on-pop);font-weight:600;line-height:1.35}
+.announce i{flex:none;width:9px;height:9px;border-radius:50%;background:currentColor;animation:an-pulse 1.6s ease-in-out infinite}
+.announce span{flex:1 1 240px}
+.announce a{display:inline-flex;align-items:center;gap:6px;color:inherit;font-family:var(--mono);font-size:.82rem;text-decoration:underline;text-underline-offset:3px}
+.announce a svg{width:14px;height:14px}
+@keyframes an-pulse{50%{opacity:.25}}
+@media(max-width:560px){.announce{border-radius:18px}}
+@media(prefers-reduced-motion:reduce){.announce i{animation:none}}
+
 /* inner pages */
 .page-head{position:relative;padding-top:clamp(36px,6vw,88px);padding-bottom:clamp(28px,4vw,44px)}
 .page-head+.wrap>.gallery:first-child,.page-head+.wrap>.empty:first-child{margin-top:0}

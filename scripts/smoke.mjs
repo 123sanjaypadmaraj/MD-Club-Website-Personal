@@ -173,6 +173,19 @@ if (collegePage) for (const pg of ["contact.html", "about.html"]) extra.push([pg
 else console.log("note: site.json college_page is empty, skipping college link checks");
 if (!(cc.email || "").trim() && !(cc.phone || "").trim()) extra.push(["contact.html", out => /href="(mailto|tel):/.test(out) ? "mailto:/tel: link shown while contact email and phone are empty" : ""]);
 else console.log("note: site.json has a contact email or phone, skipping the hidden-when-empty check");
+// Home-page announcement strip: a draft with text/link shows it, the published page shows none while the text is empty.
+const HDRAFT = "__smoke/home-draft.html";
+FRESH.add(HDRAFT);
+VIRTUAL[HDRAFT] = `<!doctype html><meta charset="utf-8"><body><script>
+fetch("../content/site.json").then(r => r.json()).then(d => {
+  d.announcement = { text: "Smoke notice Qzvx", link: "events.html", link_label: "See events" };
+  localStorage.setItem("mad_content_site", JSON.stringify(d));
+  location.replace("../index.html");
+});
+<\/script>`;
+extra.push([HDRAFT, out => ["class=\"announce\"", "Smoke notice Qzvx", 'href="events.html"', "See events"].filter(t => !out.includes(t)).map(t => `announcement strip missing ${t}`).join("; ")]);
+if (!String(siteJson.announcement?.text || "").trim()) extra.push(["index.html", out => out.includes('class="announce"') ? "announcement strip shown while announcement.text is empty" : ""]);
+else console.log("note: site.json announcement.text is set, skipping the hidden-when-empty check");
 // Several predicates may target one URL: run them all.
 const extraPred = new Map();
 for (const [u, f] of extra) { const prev = extraPred.get(u); extraPred.set(u, prev ? out => [prev(out), f(out)].filter(Boolean).join("; ") : f); }
