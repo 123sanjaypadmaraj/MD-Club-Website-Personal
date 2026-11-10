@@ -179,6 +179,26 @@ try {
   }
 } catch {}
 
+// Every <noscript> fallback must point visitors at the club's Instagram from site.json.
+try {
+  const ig = JSON.parse(readFileSync(join(root, "content/site.json"), "utf8")).instagram;
+  if (typeof ig === "string" && ig) for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+    const ns = readFileSync(join(root, f), "utf8").match(/<noscript>[\s\S]*?<\/noscript>/)?.[0];
+    if (ns && !ns.includes(ig)) errors.push(`${f}: <noscript> fallback does not link site.json instagram`);
+  }
+} catch {}
+
+// Every <noscript> fallback must link the club Instagram from site.json, so no-JS visitors are not at a dead end.
+try {
+  const ig = docs["site.json"]?.instagram;
+  if (typeof ig === "string" && ig.trim()) {
+    for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+      const ns = readFileSync(join(root, f), "utf8").match(/<noscript>[\s\S]*?<\/noscript>/)?.[0];
+      if (ns && !ns.includes(ig.trim())) errors.push(`${f}: <noscript> fallback does not link site.json instagram`);
+    }
+  }
+} catch {}
+
 try {
   const sm = (() => { try { return readFileSync(join(root, "sitemap.xml"), "utf8"); } catch { return ""; } })();
   const smBase = sm.match(/<loc>\s*(https?:\/\/[^<\s]*?\/)[^/<]*<\/loc>/)?.[1];

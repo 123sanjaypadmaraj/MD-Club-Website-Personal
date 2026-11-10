@@ -137,3 +137,6 @@ test("inline default skin matching skinOk passes", () => { const r = run(f => { 
 const ld = o => `<script type="application/ld+json">${JSON.stringify({ name: "n", alternateName: "n", foundingDate: "2023", sameAs: ["https://i.example/x"], parentOrganization: { name: "c" }, ...o })}</script>`;
 test("JSON-LD foundingDate that differs from site.json fails", () => fails(run(f => { f["index.html"] = ld({ foundingDate: "2020" }) + f["index.html"]; }), /JSON-LD foundingDate does not match/));
 test("JSON-LD matching site.json passes", () => { const r = run(f => { f["index.html"] = ld({}) + f["index.html"]; }); assert.strictEqual(r.code, 0, r.out); });
+
+test("noscript fallback without the site.json instagram link fails", () => fails(run(f => { f["index.html"] = page("<noscript><p>needs JS</p></noscript>"); }), /noscript> fallback does not link site.json instagram/));
+test("noscript fallback without the Instagram link fails", () => fails(run(f => { f["index.html"] = f["index.html"].replace("</a>", "</a><noscript><p>needs JS</p></noscript>"); }), /index\.html: <noscript> fallback does not link site\.json instagram/));
