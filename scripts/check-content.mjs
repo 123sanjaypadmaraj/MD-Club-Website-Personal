@@ -189,10 +189,12 @@ try {
 
 // Every <noscript> fallback must point visitors at the club's Instagram from site.json.
 try {
-  const ig = JSON.parse(readFileSync(join(root, "content/site.json"), "utf8")).instagram;
-  if (typeof ig === "string" && ig) for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
+  const sj = JSON.parse(readFileSync(join(root, "content/site.json"), "utf8")), ig = sj.instagram, cp = sj.college_page;
+  for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {
     const ns = readFileSync(join(root, f), "utf8").match(/<noscript>[\s\S]*?<\/noscript>/)?.[0];
-    if (ns && !ns.includes(ig)) errors.push(`${f}: <noscript> fallback does not link site.json instagram`);
+    if (!ns) continue;
+    if (typeof ig === "string" && ig && !ns.includes(ig)) errors.push(`${f}: <noscript> fallback does not link site.json instagram`);
+    if (typeof cp === "string" && cp.trim() && !ns.includes(cp.trim())) errors.push(`${f}: <noscript> fallback does not link site.json college_page`);
   }
 } catch {}
 
