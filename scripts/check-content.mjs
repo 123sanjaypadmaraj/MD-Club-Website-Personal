@@ -118,6 +118,25 @@ try {
   } else errors.push("achievements.json: missing");
 }
 
+// Organization JSON-LD on the home page must agree with site.json (no drift).
+try {
+  const h = readFileSync(join(root, "index.html"), "utf8");
+  const m = h.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  const site = JSON.parse(readFileSync(join(root, "content/site.json"), "utf8"));
+  if (m) {
+    let ld = null;
+    try { ld = JSON.parse(m[1]); } catch { errors.push("index.html: JSON-LD is not valid JSON"); }
+    if (ld) {
+      const bad = f => errors.push(`index.html: JSON-LD ${f} does not match site.json`);
+      if (ld.name !== site.full_name) bad("name");
+      if (ld.alternateName !== site.name) bad("alternateName");
+      if (ld.foundingDate !== site.established) bad("foundingDate");
+      if (ld.parentOrganization?.name !== site.college) bad("parentOrganization.name");
+      for (const u of ld.sameAs || []) if (u !== site.instagram && u !== site.college_page) bad(`sameAs ${u}`);
+    }
+  }
+} catch {}
+
 try {
   const { createHash } = await import("node:crypto");
   for (const f of readdirSync(root).filter(f => f.endsWith(".html"))) {

@@ -134,3 +134,6 @@ const skinSite2 = 'const a = "event.html"; const SKINS = [["nebula","Nebula"],["
 const skinCss = ":root[data-skin=nebula]{}:root[data-skin=ocean]{}";
 test("inline default skin that differs from skinOk fails", () => fails(run(f => { f["assets/site.js"] = skinSite2; f["assets/style.css"] = skinCss; f["index.html"] = skinPage("nebula|ocean").replace('?k:"nebula"', '?k:"ocean"'); }), /does not match skinOk default/));
 test("inline default skin matching skinOk passes", () => { const r = run(f => { f["assets/site.js"] = skinSite2; f["assets/style.css"] = skinCss; f["index.html"] = skinPage("nebula|ocean"); }); assert.strictEqual(r.code, 0, r.out); });
+const ld = o => `<script type="application/ld+json">${JSON.stringify({ name: "n", alternateName: "n", foundingDate: "2023", sameAs: ["https://i.example/x"], parentOrganization: { name: "c" }, ...o })}</script>`;
+test("JSON-LD foundingDate that differs from site.json fails", () => fails(run(f => { f["index.html"] = ld({ foundingDate: "2020" }) + f["index.html"]; }), /JSON-LD foundingDate does not match/));
+test("JSON-LD matching site.json passes", () => { const r = run(f => { f["index.html"] = ld({}) + f["index.html"]; }); assert.strictEqual(r.code, 0, r.out); });

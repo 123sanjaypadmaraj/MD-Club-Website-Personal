@@ -148,7 +148,34 @@ if (skinKeys.length >= 2) {
   const k2 = skinKeys[1];
   if (events.length) extra.push([`events.html?skin=${k2}&y=${semYear(events[0])}`, out => htmlSkin(out) !== k2 ? `skin ${k2} lost after the year filter, got "${htmlSkin(out)}"` : ""]);
 } else console.log("note: could not read SKINS, skipping ?skin= checks");
-const extraPred = new Map(extra);
+// Contact email/phone cards and the NHCE college link: published pages (hidden while empty) and a draft with both set.
+const siteJson = JSON.parse(readFileSync(join(root, "content/site.json"), "utf8"));
+const cc = siteJson.contact || {}, collegePage = (siteJson.college_page || "").trim();
+const CDRAFT = "__smoke/contact-draft.html";
+FRESH.add(CDRAFT);
+VIRTUAL[CDRAFT] = `<!doctype html><meta charset="utf-8"><body><script>
+fetch("../content/site.json").then(r => r.json()).then(d => {
+  d.contact = Object.assign({}, d.contact, { email: "smoke@example.com", phone: "+91 98765 43210", form_endpoint: "" });
+  localStorage.setItem("mad_content_site", JSON.stringify(d));
+  location.replace("../contact.html");
+});
+<\/script>`;
+extra.push([CDRAFT, out => {
+  const bad = [];
+  if ((out.match(/href="mailto:smoke@example\.com"/g) || []).length < 2) bad.push('expected href="mailto:smoke@example.com" in the card and the notice');
+  if (!out.includes('href="tel:+919876543210"')) bad.push('missing href="tel:+919876543210"');
+  if (!out.includes("<h3>Email</h3>") || !out.includes("<h3>Phone</h3>")) bad.push("missing Email/Phone card heading");
+  if (!out.includes("or email")) bad.push('missing "or email" in the registration notice');
+  return bad.join("; ");
+}]);
+const collegeLink = out => out.includes(`href="${collegePage}"`) && out.includes("Club page on the NHCE website");
+if (collegePage) for (const pg of ["contact.html", "about.html"]) extra.push([pg, out => collegeLink(out) ? "" : `${pg}: missing NHCE college link ${collegePage}`]);
+else console.log("note: site.json college_page is empty, skipping college link checks");
+if (!(cc.email || "").trim() && !(cc.phone || "").trim()) extra.push(["contact.html", out => /href="(mailto|tel):/.test(out) ? "mailto:/tel: link shown while contact email and phone are empty" : ""]);
+else console.log("note: site.json has a contact email or phone, skipping the hidden-when-empty check");
+// Several predicates may target one URL: run them all.
+const extraPred = new Map();
+for (const [u, f] of extra) { const prev = extraPred.get(u); extraPred.set(u, prev ? out => [prev(out), f(out)].filter(Boolean).join("; ") : f); }
 const urls = [...new Set([...pages, ...events.map(e => `event.html?e=${e.slug}`), ...extra.map(x => x[0]), ...process.argv.slice(2)])];
 
 const dump = url => new Promise(resolve => {
