@@ -82,6 +82,12 @@ collections:
               - { name: form_endpoint, label: "Form endpoint (Formspree URL, leave empty to hide the form)", widget: string, required: false }
               - { name: email, label: "Contact email (leave empty to hide)", widget: string, required: false }
               - { name: phone, label: "Contact phone (leave empty to hide)", widget: string, required: false }
+          - name: chat
+            label: AI chat assistant
+            widget: object
+            required: false
+            fields:
+              - { name: endpoint, label: "Assistant URL (the /ask address of the chatbot backend, leave empty to hide the chat)", widget: string, required: false }
       - name: events
         label: Events
         file: content/events.json
@@ -109,6 +115,7 @@ collections:
             fields:
               - { name: name, label: Name, widget: string }
               - { name: role, label: Role, widget: string }
+              - { name: photo, label: "Photo (optional)", widget: image, required: false }
           - name: earlier
             label: Earlier teams
             widget: list
@@ -117,6 +124,7 @@ collections:
               - { name: name, label: Name, widget: string }
               - { name: role, label: Role, widget: string }
               - { name: year, label: Year, widget: string }
+              - { name: photo, label: "Photo (optional)", widget: image, required: false }
           - name: galleries
             label: Team photo galleries
             widget: list

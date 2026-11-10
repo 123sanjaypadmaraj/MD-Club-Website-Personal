@@ -52,6 +52,12 @@ if (team) {
   if (!str(team.current_year)) errors.push("team.json: current_year missing or not a string");
   (team.current || []).forEach((m, i) => { for (const k of ["name", "role"]) if (!str(m?.[k])) errors.push(`team.json current #${i + 1} (${m?.name || "?"}): missing ${k}`); });
   (team.earlier || []).forEach((m, i) => { for (const k of ["name", "role", "year"]) if (!str(m?.[k])) errors.push(`team.json earlier #${i + 1} (${m?.name || "?"}): missing ${k}`); });
+  for (const k of ["current", "earlier"]) (team[k] || []).forEach((m, i) => {
+    if (m?.photo === undefined || m.photo === "") return;
+    const id = `team.json ${k} #${i + 1} (${m?.name || "?"})`;
+    if (typeof m.photo !== "string") errors.push(`${id}: photo must be a string`);
+    else checkPhotos(id, [m.photo]);
+  });
   const labels = new Set();
   (team.galleries || []).forEach((g, i) => {
     if (!str(g?.label)) errors.push(`team.json gallery #${i + 1}: missing label`);
@@ -68,6 +74,7 @@ try {
   const norm = p => String(p).replace(/^\//, "").replace(/\\/g, "/");
   for (const ev of events || []) for (const p of ev.photos || []) used.add(norm(p));
   for (const g of docs["team.json"]?.galleries || []) for (const p of g.photos || []) used.add(norm(p));
+  for (const k of ["current", "earlier"]) for (const m of docs["team.json"]?.[k] || []) if (typeof m?.photo === "string") used.add(norm(m.photo));
   const walk = d => readdirSync(join(root, d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(d + "/" + e.name) : [d + "/" + e.name]);
   const unused = walk("photos").filter(f => /\.(jpe?g|png|webp)$/i.test(f) && !used.has(f));
   for (const f of unused) console.warn(`warning: ${f} is not used by any event or team gallery`);
@@ -117,6 +124,12 @@ try {
     const cp = site.college_page;
     if (cp !== undefined && typeof cp !== "string") errors.push("site.json: college_page must be a string");
     else if (cp?.trim() && !/^https:\/\//.test(cp.trim())) errors.push("site.json: college_page must be empty or start with https://");
+    const ch = site.chat;
+    if (ch !== undefined) {
+      if (!ch || typeof ch !== "object" || Array.isArray(ch) || (ch.endpoint !== undefined && typeof ch.endpoint !== "string")) errors.push("site.json: chat must be an object with a string endpoint");
+      else if (ch.endpoint?.trim() && !/^https:\/\/\S+$/.test(ch.endpoint.trim())) errors.push("site.json: chat.endpoint must be empty or start with https://");
+      else if (!ch.endpoint?.trim()) console.warn("warning: site.json: chat.endpoint is empty, so the chat assistant is hidden");
+    }
     if (typeof ep === "string" && !ep.trim()) console.warn("warning: site.json: contact.form_endpoint is empty, so the Contact page shows the Instagram notice instead of the join form");
   } else errors.push("site.json: missing");
   const ach = docs["achievements.json"];

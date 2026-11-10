@@ -26,6 +26,13 @@ let missing404 = new Set();
 const server = createServer((req, res) => {
   const p = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^[/\\]+/, "") || "index.html";
   const vp = p.split(sep).join("/");
+  if (vp === "__smoke/chat" && req.method === "POST") {
+    let b = ""; req.on("data", c => b += c); req.on("end", () => {
+      let last = ""; try { last = JSON.parse(b).question; } catch {}
+      res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ answer: "Smoke reply to: " + last + "\n- first point\n- second point", sources: [{ title: "Core team", page: "team.html" }, { title: "Bad", page: "javascript:alert(1)" }] }));
+    });
+    return;
+  }
   if (VIRTUAL[vp]) { res.writeHead(200, { "Content-Type": TYPES[".html"] }); res.end(VIRTUAL[vp]); return; }
   const f = join(root, p);
   if (!f.startsWith(root) || f.split(sep).includes(".git") || !existsSync(f) || !statSync(f).isFile()) { missing404.add("/" + p.split(sep).join("/")); res.writeHead(404); res.end("not found"); return; }
@@ -35,7 +42,7 @@ const server = createServer((req, res) => {
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-const pages = ["index.html", "events.html", "about.html", "achievements.html", "team.html", "contact.html", "event.html", "404.html"];
+const pages = ["index.html", "events.html", "about.html", "achievements.html", "team.html", "contact.html", "chat.html", "event.html", "404.html"];
 const events = JSON.parse(readFileSync(join(root, "content/events.json"), "utf8")).events || [];
 
 // URL-driven states: [url, predicate(out) -> problem string or ""]. Skipped with a note if data is missing.
@@ -186,6 +193,48 @@ fetch("../content/site.json").then(r => r.json()).then(d => {
 extra.push([HDRAFT, out => ["class=\"announce\"", "Smoke notice Qzvx", 'href="events.html"', "See events"].filter(t => !out.includes(t)).map(t => `announcement strip missing ${t}`).join("; ")]);
 if (!String(siteJson.announcement?.text || "").trim()) extra.push(["index.html", out => out.includes('class="announce"') ? "announcement strip shown while announcement.text is empty" : ""]);
 else console.log("note: site.json announcement.text is set, skipping the hidden-when-empty check");
+// Chat assistant: hidden while chat.endpoint is empty; with a draft endpoint the full-page chat sends a question and shows the reply.
+const CHAT = "__smoke/chat-draft.html";
+FRESH.add(CHAT); EXEMPT.add(CHAT);
+VIRTUAL[CHAT] = `<!doctype html><meta charset="utf-8"><body><script>
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+fetch("../content/site.json").then(r => r.json()).then(async d => {
+  d.chat = { endpoint: "/__smoke/chat" };
+  localStorage.setItem("mad_content_site", JSON.stringify(d));
+  const f = document.createElement("iframe"); f.src = "../chat.html"; document.body.append(f);
+  const q = s => f.contentDocument && f.contentDocument.querySelector(s);
+  for (let i = 0; i < 40 && !q("#gpt-q"); i++) await sleep(100);
+  const out = document.createElement("p"); out.id = "chat-result";
+  if (!q("#gpt-q")) out.dataset.err = "no chat composer";
+  else {
+    out.dataset.empty = !!q(".gpt-empty") && q("#gpt-send").disabled;
+    q("#gpt-q").value = "Zqxjv question";
+    q("#gpt-q").dispatchEvent(new Event("input", { bubbles: true }));
+    q("#gpt-form").requestSubmit();
+    for (let i = 0; i < 40 && !q(".gpt-msg.bot[data-done]"); i++) await sleep(100);
+    out.dataset.user = (q(".gpt-bubble") || {}).textContent || "";
+    out.dataset.bot = (q(".gpt-msg.bot .gpt-text") || {}).textContent || "";
+    out.dataset.items = f.contentDocument.querySelectorAll(".gpt-msg.bot .gpt-text li").length;
+    out.dataset.src = [...f.contentDocument.querySelectorAll(".gpt-src a")].map(a => a.getAttribute("href")).join(",");
+    out.dataset.saved = f.contentDocument.querySelectorAll("#gpt-list .gpt-chat").length;
+    out.dataset.err = f.contentDocument.documentElement.dataset.jsError || f.contentDocument.documentElement.dataset.cspViolation || "";
+  }
+  document.body.append(out);
+});
+<\/script>`;
+extra.push([CHAT, out => {
+  const p = (out.match(/<p[^>]*id="chat-result"[^>]*>/) || [])[0];
+  if (!p) return "chat test never finished";
+  const a = n => (p.match(new RegExp("data-" + n + '="([^"]*)"')) || [])[1];
+  return a("err") ? "chat: " + a("err") : a("empty") !== "true" ? "chat did not start on the empty state with Send disabled"
+    : a("user") !== "Zqxjv question" ? "question not shown in the chat" : !a("bot").startsWith("Smoke reply to: Zqxjv question") ? `reply not shown, got: ${a("bot")}`
+    : a("items") !== "2" ? "bullet lines were not turned into a list" : a("src") !== "team.html" ? `expected only the team.html source link, got: ${a("src")}`
+    : a("saved") !== "1" ? "chat was not added to the sidebar" : "";
+}]);
+if (!String(siteJson.chat?.endpoint || "").trim()) {
+  extra.push(["index.html", out => out.includes('id="chat-open"') ? "assistant link shown while chat.endpoint is empty" : ""]);
+  extra.push(["chat.html", out => out.includes('id="gpt"') ? "chat shown while chat.endpoint is empty" : !out.includes("not switched on yet") ? "missing the not-switched-on notice" : ""]);
+} else console.log("note: site.json chat.endpoint is set, skipping the hidden-when-empty checks");
 // Several predicates may target one URL: run them all.
 const extraPred = new Map();
 for (const [u, f] of extra) { const prev = extraPred.get(u); extraPred.set(u, prev ? out => [prev(out), f(out)].filter(Boolean).join("; ") : f); }

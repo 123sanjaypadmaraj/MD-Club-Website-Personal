@@ -73,6 +73,8 @@ test("unused photo is a warning only", () => {
   assert.match(r.out, /warning: photos\/ev1\/2\.jpg is not used/);
 });
 test("team member without a name", () => fails(run(f => { f["content/team.json"].current[0].name = ""; }), /team\.json current #1 .*missing name/));
+test("team member photo missing on disk", () => fails(run(f => { f["content/team.json"].current[0].photo = "photos/team/9.jpg"; }), /team\.json current #1 \(A\): photo not found on disk: photos\/team\/9\.jpg/));
+test("team member photo not a string", () => fails(run(f => { f["content/team.json"].earlier[0].photo = ["x"]; }), /team\.json earlier #1 \(B\): photo must be a string/));
 test("team gallery without a label", () => fails(run(f => { delete f["content/team.json"].galleries[0].label; }), /gallery #1: missing label/));
 test("team gallery duplicate label", () => fails(run(f => { const g = f["content/team.json"].galleries; g.push({ label: "G", photos: [] }); }), /gallery #2 \(G\): duplicate label/));
 test("team gallery photos not an array", () => fails(run(f => { f["content/team.json"].galleries[0].photos = "photos/ev1/1.jpg"; }), /gallery #1 \(G\): photos must be an array/));
@@ -107,6 +109,12 @@ test("og:image pointing at a missing file", () => fails(run(f => { f["index.html
 test("og:image that exists passes", () => {
   const r = run(f => { f["index.html"] = page('<meta property="og:url" content="' + BASE + '"><meta property="og:image" content="' + BASE + 'photos/ev1/1.jpg">'); });
   assert.strictEqual(r.code, 0, r.out);
+});
+
+test("chat endpoint that is not https", () => fails(run(f => { f["content/site.json"].chat = { endpoint: "http://w.example" }; }), /chat\.endpoint must be empty or start with https:\/\//));
+test("chat that is not an object", () => fails(run(f => { f["content/site.json"].chat = "https://w.example"; }), /chat must be an object with a string endpoint/));
+test("chat with an https endpoint or empty passes", () => {
+  for (const endpoint of ["", "https://mad-chat.example.workers.dev"]) { const r = run(f => { f["content/site.json"].chat = { endpoint }; }); assert.strictEqual(r.code, 0, r.out); }
 });
 
 // Editor coverage: every top-level content key must be editable in admin/admin.js and admin/cms/config.yml.

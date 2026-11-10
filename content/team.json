@@ -3,59 +3,72 @@
   "current": [
     {
       "name": "Sujay K",
-      "role": "President"
+      "role": "President",
+      "photo": "photos/team/26-27/1.png"
     },
     {
       "name": "Manushree M",
-      "role": "Vice President"
+      "role": "Vice President",
+      "photo": "photos/team/26-27/2.png"
     },
     {
       "name": "Sathvikha Manish",
-      "role": "Secretary"
+      "role": "Secretary",
+      "photo": "photos/team/26-27/3.png"
     },
     {
       "name": "Marylin Nithika",
-      "role": "Treasurer"
+      "role": "Treasurer",
+      "photo": "photos/team/26-27/4.png"
     },
     {
       "name": "Hari Prasad S",
-      "role": "Program Committee Chair"
+      "role": "Program Committee Chair",
+      "photo": "photos/team/26-27/5.png"
     },
     {
       "name": "Prajna R",
-      "role": "Program Committee Vice Chair"
+      "role": "Program Committee Vice Chair",
+      "photo": "photos/team/26-27/6.png"
     },
     {
       "name": "Poojitha Subramanyam",
-      "role": "Project Committee Chair"
+      "role": "Project Committee Chair",
+      "photo": "photos/team/26-27/7.png"
     },
     {
       "name": "Rajeev Sharma",
-      "role": "Project Committee Vice Chair"
+      "role": "Project Committee Vice Chair",
+      "photo": "photos/team/26-27/8.png"
     },
     {
       "name": "Mohammed Faidh",
-      "role": "Marketing Committee Chair"
+      "role": "Marketing Committee Chair",
+      "photo": "photos/team/26-27/9.png"
     },
     {
       "name": "Mrinal Satheesh",
-      "role": "Marketing Committee Vice Chair"
+      "role": "Marketing Committee Vice Chair",
+      "photo": "photos/team/26-27/10.png"
     },
     {
       "name": "Sanjay Padmaraj",
-      "role": "Review Committee Chair"
+      "role": "Review Committee Chair",
+      "photo": "photos/team/26-27/11.png"
     }
   ],
   "earlier": [
     {
       "name": "Chiranjeevi",
       "role": "President",
-      "year": "2024-25"
+      "year": "2024-25",
+      "photo": "photos/team/24-25/2.png"
     },
     {
       "name": "Likitha K",
       "role": "Vice President",
-      "year": "2024-25"
+      "year": "2024-25",
+      "photo": "photos/team/24-25/3.png"
     }
   ],
   "galleries": [
