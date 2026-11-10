@@ -36,11 +36,19 @@ These stay empty until the club supplies them; the site works without them.
 
 ## Looks
 
-Four dark themes (Nebula purple, Ocean blue, Aurora green, Solar amber) share one structure. Visitors switch with the control in the header, and the choice is remembered. Change the default in the inline script in each page's `<head>` and in `assets/site.js`.
+Four skins share one structure: Nebula (violet and lime, the default), Ocean (blue and yellow) and Aurora (mint and pink) are dark; Solar (paper and burnt orange) is light. Visitors switch with the colour dots in the header (or "Style" in the phone tab bar), and the choice is remembered. Change the default in the inline script in each page's `<head>` and in `assets/site.js`. Colour is flat: one accent plus one "pop" colour per skin, set as variables at the top of `assets/style.css`.
 
 ## Interactions
 
-Ctrl+K (or the Search button) opens a command menu for pages, events and styles. Press `/` on the Events page to jump to search. Cards tilt, buttons follow the pointer, and the phone on the home page is clickable.
+- The phone on the home page is a story player over the real event photos: it advances by itself, pauses on hover, and tapping its left or right side goes back or forward. "Open event" goes to that event.
+- The photo reel ("Seen at our events") and the event rows use the first photos of each event, so adding photos to an event in either editor updates the home page too.
+- Gallery tiles follow each photo's shape (posters stand tall, team portraits are round).
+- Ctrl+K (or the Search button) opens a command menu for pages, events and styles. Press `/` on the Events page to jump to search.
+- On phones the site has a bottom tab bar (Home, Events, Team, Join, Search, Style) and a full-screen menu.
+
+## WordPress theme
+
+`assets/site.js` and `assets/style.css` are also the engine of the WordPress theme (`mad-club-clone.zip`, kept outside this repo). The theme sets `window.MAD_WP` (content, page URLs, theme folder) and the same script draws the pages, so the two cannot drift apart. After changing the design here, copy `assets/`, `content/`, `photos/` and `favicon.svg` into the theme folder and zip it again.
 
 ## Other
 
