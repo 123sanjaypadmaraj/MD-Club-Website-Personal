@@ -381,6 +381,7 @@ function wireChatPage(site) {
       for (const s of src) { const a = el("a", "", s.title.slice(0, 60)); a.href = s.page; p.append(a); }
       body.append(p);
     }
+    if (m.fallback) body.append(el("p", "gpt-fallback", "Quick answer from the site; the full assistant is offline right now."));
     const acts = el("div", "gpt-acts"), copy = el("button", "", "Copy");
     copy.type = "button";
     copy.onclick = async () => { try { await navigator.clipboard.writeText(m.content); copy.textContent = "Copied"; } catch { copy.textContent = "Copy failed"; } setTimeout(() => { copy.textContent = "Copy"; }, 1600); };
@@ -443,6 +444,19 @@ function wireChatPage(site) {
     localReady.catch(() => { localReady = null; });
     return localReady.then(chunks => window.MADChatLocal.answer(question, history, chunks));
   };
+  // With a backend: wake it as soon as the page opens (free Spaces sleep), and answer from the site when it is down.
+  // A busy backend (429) keeps its message; after 2 failures in a row the rest of this visit uses built-in answers.
+  let fails = 0;
+  if (ep) try { fetch(new URL("/health", new URL(ep, location.href)), { signal: AbortSignal.timeout(4000) }).catch(() => {}); } catch {}
+  const remote = async (question, history) => {
+    let r;
+    try { r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, history }), signal: AbortSignal.timeout(25000) }); }
+    catch { return null; }
+    const d = await r.json().catch(() => ({}));
+    if (r.status >= 500 || r.status === 403) return null;
+    if (!r.ok) throw new Error(typeof d.error === "string" ? d.error : "");
+    return d;
+  };
   async function ask(text) {
     text = String(text).trim().slice(0, MAX);
     if (!text || busy) return;
@@ -456,14 +470,14 @@ function wireChatPage(site) {
     drawList(); save(); toEnd();
     try {
       let d;
-      if (!ep) { d = await localAnswer(text, history); await new Promise(r => setTimeout(r, reduced ? 0 : 250)); }
-      else {
-        const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text, history }) });
-        d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(typeof d.error === "string" ? d.error : "");
+      if (ep && fails < 2) { d = await remote(text, history); if (d && typeof d.answer === "string" && d.answer.trim()) fails = 0; else d = null; }
+      if (!d) {
+        if (ep) fails++;
+        d = await localAnswer(text, history); d.fallback = !!ep;
+        await new Promise(r => setTimeout(r, reduced ? 0 : 250));
       }
       if (typeof d?.answer !== "string" || !d.answer.trim()) throw new Error(typeof d?.error === "string" ? d.error : "");
-      const m = { role: "assistant", content: d.answer.trim(), sources: Array.isArray(d.sources) ? d.sources.filter(s => s && okPage(s.page) && typeof s.title === "string").slice(0, 3) : [] };
+      const m = { role: "assistant", content: d.answer.trim(), ...(d.fallback ? { fallback: true } : {}), sources: Array.isArray(d.sources) ? d.sources.filter(s => s && okPage(s.page) && typeof s.title === "string").slice(0, 3) : [] };
       chat.msgs.push(m); save();
       if (cur === chat && row.isConnected) await type(row, m);
     } catch (err) {
