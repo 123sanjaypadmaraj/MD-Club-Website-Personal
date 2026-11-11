@@ -33,6 +33,8 @@ const server = createServer((req, res) => {
     });
     return;
   }
+  if (vp === "health") { res.writeHead(200, { "Content-Type": "application/json" }); res.end('{"status":"ok"}'); return; }
+  if (vp === "__smoke/chat-down" && req.method === "POST") { req.resume(); res.writeHead(503, { "Content-Type": "application/json" }); res.end('{"error":"down"}'); return; }
   if (VIRTUAL[vp]) { res.writeHead(200, { "Content-Type": TYPES[".html"] }); res.end(VIRTUAL[vp]); return; }
   const f = join(root, p);
   if (!f.startsWith(root) || f.split(sep).includes(".git") || !existsSync(f) || !statSync(f).isFile()) { missing404.add("/" + p.split(sep).join("/")); res.writeHead(404); res.end("not found"); return; }
@@ -231,6 +233,56 @@ extra.push([CHAT, out => {
     : a("items") !== "2" ? "bullet lines were not turned into a list" : a("src") !== "team.html" ? `expected only the team.html source link, got: ${a("src")}`
     : a("saved") !== "1" ? "chat was not added to the sidebar" : "";
 }]);
+// Built-in answers (no draft, so the published chat.endpoint) and the fallback when the backend is down (503).
+// Both ask the first suggestion chip and report what the chat showed.
+const chatProbe = (endpoint, id) => `<!doctype html><meta charset="utf-8"><body><script>
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  ${endpoint ? `const d = await (await fetch("../content/site.json")).json(); d.chat = { endpoint: "${endpoint}" }; localStorage.setItem("mad_content_site", JSON.stringify(d));` : ""}
+  const f = document.createElement("iframe"); f.src = "../chat.html"; document.body.append(f);
+  const q = s => f.contentDocument && f.contentDocument.querySelector(s), all = s => [...f.contentDocument.querySelectorAll(s)];
+  for (let i = 0; i < 40 && !q(".gpt-chips button"); i++) await sleep(100);
+  const out = document.createElement("p"); out.id = "${id}";
+  const chip = q(".gpt-chips button") && all(".gpt-chips button").find(b => b.textContent === "Who is on the core team?");
+  if (!chip) out.dataset.err = "no core team suggestion";
+  else {
+    chip.click();
+    for (let i = 0; i < 60 && !q(".gpt-msg.bot[data-done]"); i++) await sleep(100);
+    out.dataset.bot = ((q(".gpt-msg.bot .gpt-text") || {}).textContent || "").slice(0, 400);
+    out.dataset.src = all(".gpt-src a").map(a => a.getAttribute("href")).join(",");
+    out.dataset.saved = all("#gpt-list .gpt-chat").length;
+    out.dataset.fallback = !!q(".gpt-fallback");
+    out.dataset.gpterr = !!q(".gpt-err");
+    q("#gpt-new").click();
+    out.dataset.reset = !!q(".gpt-empty") && !q(".gpt-msg");
+    out.dataset.err = f.contentDocument.documentElement.dataset.jsError || f.contentDocument.documentElement.dataset.cspViolation || "";
+  }
+  document.body.append(out);
+})();
+</script>`;
+const probe = (out, id) => { const p = (out.match(new RegExp(`<p[^>]*id="${id}"[^>]*>`)) || [])[0]; return p && (n => (p.match(new RegExp("data-" + n + '="([^"]*)"')) || [])[1]); };
+const firstMember = String(JSON.parse(readFileSync(join(root, "content/team.json"), "utf8")).current?.[0]?.name || "");
+const CHAT_LOCAL = "__smoke/chat-local.html", CHAT_DOWN = "__smoke/chat-down.html";
+FRESH.add(CHAT_DOWN); EXEMPT.add(CHAT_DOWN);
+VIRTUAL[CHAT_DOWN] = chatProbe("/__smoke/chat-down", "down-result");
+extra.push([CHAT_DOWN, out => {
+  const a = probe(out, "down-result");
+  if (!a) return "backend-down chat test never finished";
+  return a("err") ? "chat: " + a("err") : a("gpterr") !== "false" ? "showed an error instead of a built-in answer"
+    : !a("bot").includes(firstMember) ? `built-in answer missing ${firstMember}, got: ${a("bot")}` : a("fallback") !== "true" ? "missing the gpt-fallback line" : "";
+}]);
+if (!String(siteJson.chat?.endpoint || "").trim()) {
+  FRESH.add(CHAT_LOCAL); EXEMPT.add(CHAT_LOCAL);
+  VIRTUAL[CHAT_LOCAL] = chatProbe("", "local-result");
+  extra.push([CHAT_LOCAL, out => {
+    const a = probe(out, "local-result");
+    if (!a) return "built-in chat test never finished";
+    return a("err") ? "chat: " + a("err") : !a("bot").includes(firstMember) ? `answer missing ${firstMember}, got: ${a("bot")}`
+      : !a("src").split(",").includes("team.html") ? `no team.html source link, got: ${a("src")}` : a("saved") !== "1" ? "chat was not added to the sidebar"
+      : a("fallback") !== "false" ? "built-in mode showed the offline line" : a("reset") !== "true" ? "New chat did not bring back the empty state" : "";
+  }]);
+  for (const u of ["events.html", "team.html"]) extra.push([u, out => /id="chat-open"[^>]*href="chat.html"|href="chat.html"[^>]*id="chat-open"/.test(out) ? "" : "assistant link missing"]);
+} else console.log("note: site.json chat.endpoint is set, skipping the built-in answer checks");
 // The chat is always on: built-in answers while chat.endpoint is empty, the backend once it is set.
 extra.push(["index.html", out => out.includes('id="chat-open"') ? "" : "assistant link missing"]);
 extra.push(["chat.html", out => !out.includes('id="gpt"') ? "chat UI missing" : !String(siteJson.chat?.endpoint || "").trim() && !out.includes("Quick answers matched from this website") ? "missing the built-in answers note" : ""]);
