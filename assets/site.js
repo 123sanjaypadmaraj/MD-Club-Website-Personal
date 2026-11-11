@@ -213,9 +213,9 @@ ${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="
   },
 
   // Full-page assistant (ChatGPT-style). The markup is static; wireChatPage() drives it.
+  // With chat.endpoint empty it answers in the browser from the site's own content (assets/chat-local.js).
   async chat(site) {
-    if (!String(site.chat?.endpoint || "").trim())
-      return head("Assistant", "The assistant is not switched on yet.", "Until it is, the quickest way to get an answer is Instagram.") + `<div class="wrap"><a class="btn primary" href="${esc(site.instagram)}">${esc(site.instagram_handle)} on Instagram ${ARROW}</a></div>`;
+    const local = !String(site.chat?.endpoint || "").trim();
     return `<div class="gpt" id="gpt"><aside class="gpt-side" id="gpt-side" aria-label="Your chats">
 <button type="button" class="gpt-new" id="gpt-new"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>New chat</button>
 <p class="gpt-cap">Recent</p><ul id="gpt-list"></ul><p class="gpt-foot">Chats are saved in this browser only.</p></aside>
@@ -224,7 +224,7 @@ ${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="
 <div class="gpt-scroll" id="gpt-scroll"><div class="gpt-col" id="gpt-log" role="log" aria-live="polite"></div></div>
 <form class="gpt-form" id="gpt-form"><div class="gpt-box"><textarea id="gpt-q" rows="1" maxlength="500" placeholder="Ask anything about ${esc(site.name)}" aria-label="Your question"></textarea>
 <button type="submit" id="gpt-send" aria-label="Send" disabled><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-<p class="gpt-note">Answers come only from this website and can still be wrong. For anything important, ask on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a>.</p></form></section></div>`;
+<p class="gpt-note">${local ? "Quick answers matched from this website's pages. " : ""}Answers come only from this website and can still be wrong. For anything important, ask on <a href="${esc(site.instagram)}">${esc(site.instagram_handle)}</a>.</p></form></section></div>`;
   },
   async notfound() {
     return head("404", "Page not found.", "That page does not exist.") + `<div class="wrap"><p class="back"><a class="btn primary" href="${esc(U("home"))}">Home</a><a class="btn" href="${esc(U("events"))}">Events</a></p></div>`;
@@ -332,16 +332,17 @@ function wireDock() {
   let last = scrollY;
   addEventListener("scroll", () => { const y = scrollY; d.classList.toggle("tuck", y > last + 6 && y > 400); if (Math.abs(y - last) > 6) last = y; }, {passive:true});
 }
-// Chat assistant. Both parts appear only when site.json chat.endpoint is set (the /ask URL of the backend in chatbot/).
+// Chat assistant. Always shown. With site.json chat.endpoint set (the /ask URL of the backend in chatbot/) it asks
+// that backend; with it empty it answers in the browser from content/*.json via assets/chat-local.js.
 // Every page gets a floating link to the assistant; chat.html is the full-page chat.
 function wireChatFab(site) {
-  if (page === "chat" || !String(site.chat?.endpoint || "").trim() || (WP && !WP.urls.chat)) return;
+  if (page === "chat" || (WP && !WP.urls.chat)) return;
   document.body.insertAdjacentHTML("beforeend", `<a class="chat-fab" id="chat-open" href="${esc(U("chat"))}">Ask ${esc(site.name)}</a>`);
 }
 function wireChatPage(site) {
   const g = $("#gpt");
   if (!g) return;
-  const ep = site.chat.endpoint.trim(), KEY = "mad_chats", MAX = 500;
+  const ep = String(site.chat?.endpoint || "").trim(), KEY = "mad_chats", MAX = 500;
   const log = $("#gpt-log"), scroll = $("#gpt-scroll"), q = $("#gpt-q"), send = $("#gpt-send"), list = $("#gpt-list"), menu = $("#gpt-menu"), shade = $("#gpt-shade");
   const SUGGEST = ["Who is on the core team?", "What events has the club run?", "How do I join?", "What apps have members built?"];
   let chats = [], cur = null, busy = false;
@@ -430,6 +431,18 @@ function wireChatPage(site) {
     };
     tick();
   });
+  // Built-in answers: chat-local.js is loaded once, on demand, and its chunks are built from the same content as the pages.
+  let localReady = null;
+  const localAnswer = (question, history) => {
+    localReady ||= new Promise((ok, no) => {
+      if (window.MADChatLocal) return ok();
+      const s = document.createElement("script");
+      s.src = (WP ? WP.base : "") + "assets/chat-local.js"; s.onload = ok; s.onerror = () => no(new Error("Could not load the assistant. Check your connection and try again."));
+      document.head.append(s);
+    }).then(() => Promise.all(["site", "events", "team", "achievements"].map(load))).then(c => window.MADChatLocal.buildChunks(...c));
+    localReady.catch(() => { localReady = null; });
+    return localReady.then(chunks => window.MADChatLocal.answer(question, history, chunks));
+  };
   async function ask(text) {
     text = String(text).trim().slice(0, MAX);
     if (!text || busy) return;
@@ -442,9 +455,14 @@ function wireChatPage(site) {
     $(".gpt-body", row).innerHTML = `<span class="gpt-dots" role="status" aria-label="Thinking"><i></i><i></i><i></i></span>`;
     drawList(); save(); toEnd();
     try {
-      const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text, history }) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || typeof d.answer !== "string" || !d.answer.trim()) throw new Error(typeof d.error === "string" ? d.error : "");
+      let d;
+      if (!ep) { d = await localAnswer(text, history); await new Promise(r => setTimeout(r, reduced ? 0 : 250)); }
+      else {
+        const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text, history }) });
+        d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(typeof d.error === "string" ? d.error : "");
+      }
+      if (typeof d?.answer !== "string" || !d.answer.trim()) throw new Error(typeof d?.error === "string" ? d.error : "");
       const m = { role: "assistant", content: d.answer.trim(), sources: Array.isArray(d.sources) ? d.sources.filter(s => s && okPage(s.page) && typeof s.title === "string").slice(0, 3) : [] };
       chat.msgs.push(m); save();
       if (cur === chat && row.isConnected) await type(row, m);

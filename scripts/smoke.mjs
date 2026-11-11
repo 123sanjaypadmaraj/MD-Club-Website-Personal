@@ -193,7 +193,7 @@ fetch("../content/site.json").then(r => r.json()).then(d => {
 extra.push([HDRAFT, out => ["class=\"announce\"", "Smoke notice Qzvx", 'href="events.html"', "See events"].filter(t => !out.includes(t)).map(t => `announcement strip missing ${t}`).join("; ")]);
 if (!String(siteJson.announcement?.text || "").trim()) extra.push(["index.html", out => out.includes('class="announce"') ? "announcement strip shown while announcement.text is empty" : ""]);
 else console.log("note: site.json announcement.text is set, skipping the hidden-when-empty check");
-// Chat assistant: hidden while chat.endpoint is empty; with a draft endpoint the full-page chat sends a question and shows the reply.
+// Chat assistant: with a draft endpoint the full-page chat sends a question and shows the reply.
 const CHAT = "__smoke/chat-draft.html";
 FRESH.add(CHAT); EXEMPT.add(CHAT);
 VIRTUAL[CHAT] = `<!doctype html><meta charset="utf-8"><body><script>
@@ -231,10 +231,9 @@ extra.push([CHAT, out => {
     : a("items") !== "2" ? "bullet lines were not turned into a list" : a("src") !== "team.html" ? `expected only the team.html source link, got: ${a("src")}`
     : a("saved") !== "1" ? "chat was not added to the sidebar" : "";
 }]);
-if (!String(siteJson.chat?.endpoint || "").trim()) {
-  extra.push(["index.html", out => out.includes('id="chat-open"') ? "assistant link shown while chat.endpoint is empty" : ""]);
-  extra.push(["chat.html", out => out.includes('id="gpt"') ? "chat shown while chat.endpoint is empty" : !out.includes("not switched on yet") ? "missing the not-switched-on notice" : ""]);
-} else console.log("note: site.json chat.endpoint is set, skipping the hidden-when-empty checks");
+// The chat is always on: built-in answers while chat.endpoint is empty, the backend once it is set.
+extra.push(["index.html", out => out.includes('id="chat-open"') ? "" : "assistant link missing"]);
+extra.push(["chat.html", out => !out.includes('id="gpt"') ? "chat UI missing" : !String(siteJson.chat?.endpoint || "").trim() && !out.includes("Quick answers matched from this website") ? "missing the built-in answers note" : ""]);
 // Several predicates may target one URL: run them all.
 const extraPred = new Map();
 for (const [u, f] of extra) { const prev = extraPred.get(u); extraPred.set(u, prev ? out => [prev(out), f(out)].filter(Boolean).join("; ") : f); }

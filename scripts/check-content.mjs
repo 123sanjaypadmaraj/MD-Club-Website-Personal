@@ -128,7 +128,7 @@ try {
     if (ch !== undefined) {
       if (!ch || typeof ch !== "object" || Array.isArray(ch) || (ch.endpoint !== undefined && typeof ch.endpoint !== "string")) errors.push("site.json: chat must be an object with a string endpoint");
       else if (ch.endpoint?.trim() && !/^https:\/\/\S+$/.test(ch.endpoint.trim())) errors.push("site.json: chat.endpoint must be empty or start with https://");
-      else if (!ch.endpoint?.trim()) console.warn("warning: site.json: chat.endpoint is empty, so the chat assistant is hidden");
+      else if (!ch.endpoint?.trim()) console.warn("warning: site.json: chat.endpoint is empty, so the chat assistant uses built-in answers matched from the site (no Groq backend)");
     }
     if (typeof ep === "string" && !ep.trim()) console.warn("warning: site.json: contact.form_endpoint is empty, so the Contact page shows the Instagram notice instead of the join form");
   } else errors.push("site.json: missing");

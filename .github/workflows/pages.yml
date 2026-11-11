@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 20
       - name: Syntax-check scripts
-        run: node --check assets/site.js && node --check admin/admin.js && node --check scripts/check-content.mjs && node --check scripts/smoke.mjs && node --check scripts/check-content.test.mjs
+        run: node --check assets/site.js && node --check assets/chat-local.js && node --check admin/admin.js && node --check scripts/check-content.mjs && node --check scripts/smoke.mjs && node --check scripts/check-content.test.mjs && node --check scripts/chat-local.test.mjs
       - name: Run tests
         run: node --test scripts/*.test.mjs
       - name: Test the assistant's knowledge base
