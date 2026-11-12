@@ -103,6 +103,28 @@ collections:
               - { name: flagship, label: Flagship event, widget: boolean, default: false }
               - { name: description, label: Description, widget: text }
               - { name: photos, label: Photos, widget: list, field: { name: photo, label: Photo, widget: image }, required: false }
+              - { name: poster, label: "Poster (optional; event page and home spotlight)", widget: image, required: false }
+              - { name: tagline, label: "Tagline (optional)", widget: string, required: false }
+              - { name: start, label: "Start date YYYY-MM-DD (optional; turns on the details layout and home spotlight)", widget: string, required: false, pattern: ['^(\d{4}-\d\d-\d\d)?$', 'Use the form 2026-11-17'] }
+              - { name: end, label: "End date YYYY-MM-DD (optional)", widget: string, required: false, pattern: ['^(\d{4}-\d\d-\d\d)?$', 'Use the form 2026-11-18'] }
+              - { name: time, label: "Time (e.g. 11 AM onwards)", widget: string, required: false }
+              - { name: venue, label: Venue, widget: string, required: false }
+              - { name: register, label: "Registration link (https://)", widget: string, required: false, pattern: ['^(https://\S+)?$', 'Use a full https:// address'] }
+              - name: schedule
+                label: "Schedule (one entry per day)"
+                widget: list
+                required: false
+                fields: [{ name: title, label: Title, widget: string }, { name: text, label: Text, widget: string, required: false }]
+              - name: perks
+                label: What participants get
+                widget: list
+                required: false
+                fields: [{ name: title, label: Title, widget: string }, { name: text, label: Text, widget: string, required: false }]
+              - name: contacts
+                label: Contacts
+                widget: list
+                required: false
+                fields: [{ name: name, label: Name, widget: string }, { name: phone, label: Phone, widget: string, required: false }]
       - name: team
         label: Team
         file: content/team.json
@@ -116,6 +138,9 @@ collections:
               - { name: name, label: Name, widget: string }
               - { name: role, label: Role, widget: string }
               - { name: photo, label: "Photo (optional)", widget: image, required: false }
+              - { name: bio, label: "Bio (optional)", widget: text, required: false }
+              - { name: quote, label: "Quote (optional)", widget: string, required: false }
+              - { name: github, label: "GitHub URL (optional)", widget: string, required: false }
           - name: earlier
             label: Earlier teams
             widget: list

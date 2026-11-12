@@ -112,6 +112,51 @@
       "flagship": false,
       "description": "Hands-on Git and collaboration event.",
       "photos": []
+    },
+    {
+      "slug": "daemon-hour26",
+      "name": "Daemon Hour",
+      "semester": "26-27 Odd Sem",
+      "flagship": false,
+      "description": "A two-day event: a workshop on day 1 and a hackathon like never before on day 2. Bid it, spin it, bingo it! 17 and 18 November, 11 AM onwards, Falconry Hall. Certificates for participants and cash prizes to win.",
+      "tagline": "A hackathon like never before. Bid it, spin it, bingo it!",
+      "poster": "photos/daemon-hour26/poster.jpg",
+      "start": "2026-11-17",
+      "end": "2026-11-18",
+      "time": "11 AM onwards",
+      "venue": "Falconry Hall, NHCE",
+      "register": "https://forms.gle/RS3KMMQYNZXSH5p18",
+      "schedule": [
+        {
+          "title": "Workshop",
+          "text": "Learn the tools and get set up for the next day."
+        },
+        {
+          "title": "Hackathon",
+          "text": "Bid it, spin it, bingo it: build against the clock."
+        }
+      ],
+      "perks": [
+        {
+          "title": "Certificates",
+          "text": "For everyone who takes part."
+        },
+        {
+          "title": "Cash prize",
+          "text": "For the winning teams."
+        }
+      ],
+      "contacts": [
+        {
+          "name": "Sujay K",
+          "phone": "8147231369"
+        },
+        {
+          "name": "Manushree",
+          "phone": "9035730673"
+        }
+      ],
+      "photos": []
     }
   ]
 }

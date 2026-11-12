@@ -40,12 +40,21 @@ const TABS = [
       { ...str("slug", "URL slug (letters, numbers, dashes)"), check: (v, o) => !/^[a-z0-9-]+$/.test(v || "") ? "Use lowercase letters, numbers and dashes only." : (data.events?.events || []).filter(e => e !== o && e.slug === v).length ? "Another event already uses this slug." : "" },
       str("name", "Name"), { ...str("semester", "Semester (e.g. 24-25 Odd Sem)"), check: v => /^\d\d-\d\d (Odd|Even) Sem$/.test(v || "") ? "" : "Use the form 24-25 Odd Sem." },
       { t: "bool", key: "flagship", label: "Flagship event" }, txt("description", "Description"),
-      { t: "images", key: "photos", label: "Photos" }],
+      { t: "images", key: "photos", label: "Photos" },
+      { t: "image", key: "poster", label: "Poster (optional; shown on the event page and the home page spotlight)" },
+      str("tagline", "Tagline (optional)"),
+      { ...str("start", "Start date, YYYY-MM-DD (optional; a date turns on the details layout and the home page spotlight)"), check: v => !(v || "").trim() || /^\d{4}-\d\d-\d\d$/.test(v.trim()) ? "" : "Use the form 2026-11-17, or leave empty." },
+      { ...str("end", "End date, YYYY-MM-DD (optional)"), check: v => !(v || "").trim() || /^\d{4}-\d\d-\d\d$/.test(v.trim()) ? "" : "Use the form 2026-11-18, or leave empty." },
+      str("time", "Time (e.g. 11 AM onwards)"), str("venue", "Venue"),
+      { ...str("register", "Registration link (https://, hidden once the event is over)"), check: v => !(v || "").trim() || /^https:\/\/\S+$/.test(v.trim()) ? "" : "Use a full https:// address, or leave empty." },
+      list("schedule", "Schedule (one entry per day)", pair, i => i.title),
+      list("perks", "What participants get", pair, i => i.title),
+      list("contacts", "Contacts", [str("name", "Name"), str("phone", "Phone")], i => i.name, null, i => i.phone)],
       i => i.name, () => ({ slug: "new-event", name: "New event", semester: "25-26 Odd Sem", flagship: false, description: "", photos: [] }),
       i => i.semester)] },
   { id: "team", label: "Team", file: "team", preview: "../team.html", defs: [
     str("current_year", "Current team year"),
-    list("current", "Current team", [str("name", "Name"), str("role", "Role"), { t: "image", key: "photo", label: "Photo (optional; initials show without one)" }], i => i.name, null, i => i.role),
+    list("current", "Current team", [str("name", "Name"), str("role", "Role"), { t: "image", key: "photo", label: "Photo (optional; initials show without one)" }, txt("bio", "Bio (optional, one or two sentences)"), str("quote", "Quote (optional, their own words)"), str("github", "GitHub URL (optional, https://github.com/...)")], i => i.name, null, i => i.role),
     list("earlier", "Earlier teams", [str("name", "Name"), str("role", "Role"), str("year", "Year"), { t: "image", key: "photo", label: "Photo (optional; initials show without one)" }], i => i.name, null, i => `${i.role}, ${i.year}`),
     list("galleries", "Team photo galleries", [str("label", "Gallery title"), { t: "images", key: "photos", label: "Photos" }], i => i.label, () => ({ label: "New gallery", photos: [] }), i => `${(i.photos || []).length} photos`)] },
   { id: "achievements", label: "Achievements", file: "achievements", preview: "../achievements.html", defs: [
@@ -231,6 +240,8 @@ function start() {
           save1(await (await fetch(src)).blob(), `${ev.slug}-${n1}.jpg`); n++;
           return `photos/${ev.slug}/${n1}.jpg`;
         }));
+        if (!ev.poster) delete ev.poster;
+        else if (String(ev.poster).startsWith("data:")) { save1(await (await fetch(ev.poster)).blob(), `${ev.slug}-poster.jpg`); n++; ev.poster = `photos/${ev.slug}/poster.jpg`; }
       }
     }
     if (cur.file === "team") {

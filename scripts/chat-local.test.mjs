@@ -18,7 +18,7 @@ test("chunk titles match chatbot/rag.py build_chunks for the current content", (
   assert.deepEqual(Array.from(chunks, c => c.title), ["About the club", "What the club does", "Why join and how to join", "Contact details",
     "Achievements and numbers", "Apps built by members", "Core team 2025-26 (current members and their roles)", "Earlier teams (previous members)",
     "List of all events", "Flagship events", "Event: Mindspark'23", "Event: InnoWave'24", "Event: TechSync'24", "Event: Connect'24",
-    "Event: Pixel Pursuit'24", "Event: Codathon", "Event: Appsylum'25", "Event: Game Design'26", "Event: Gitout'26"]);
+    "Event: Pixel Pursuit'24", "Event: Codathon", "Event: Appsylum'25", "Event: Game Design'26", "Event: Gitout'26", "Event: Daemon Hour"]);
 });
 
 test("core team question answers with team.json names and a team.html source", () => {

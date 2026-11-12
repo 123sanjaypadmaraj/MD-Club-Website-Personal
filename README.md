@@ -47,6 +47,7 @@ Four skins share one structure: Nebula (violet and lime, the default), Ocean (bl
 ## Interactions
 
 - The phone on the home page is a story player over the real event photos: it advances by itself, pauses on hover, and tapping its left or right side goes back or forward. "Open event" goes to that event.
+- Give an event a start date (and optionally a poster, tagline, end date, time, venue, registration link, schedule, perks and contacts; both editors have these fields) and its page switches to a details layout: poster, live countdown, key facts, Register / Add to calendar / Share, day-by-day schedule, perks and tap-to-call contacts. The home page shows the event with the latest start date as a spotlight card under the hero. Labels change by themselves: "Coming up", then "Happening now", then "Latest event", and the Register button disappears once the event is over.
 - The photo reel ("Seen at our events") and the event rows use the first photos of each event, so adding photos to an event in either editor updates the home page too.
 - Gallery tiles follow each photo's shape (posters stand tall, team portraits are round).
 - Ctrl+K (or the Search button) opens a command menu for pages, events and styles. Press `/` on the Events page to jump to search.

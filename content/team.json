@@ -4,57 +4,81 @@
     {
       "name": "Sujay K",
       "role": "President",
-      "photo": "photos/team/26-27/1.png"
+      "photo": "photos/team/posters/sujay-k.jpg",
+      "bio": "Directs overall club vision, leads cross-committee architecture, and drives campus-wide mobile initiatives.",
+      "quote": "For a reason beyond the road",
+      "github": "https://github.com/sk101-art"
     },
     {
       "name": "Manushree M",
       "role": "Vice President",
-      "photo": "photos/team/26-27/2.png"
+      "photo": "photos/team/posters/manushree-m.jpg",
+      "bio": "Coordinates executive operations, partnerships, and oversees seamless execution across flagship events.",
+      "quote": "Might as well do it"
     },
     {
       "name": "Sathvikha Manish",
       "role": "Secretary",
-      "photo": "photos/team/26-27/3.png"
+      "photo": "photos/team/posters/sathvikha-m.jpg",
+      "bio": "Manages official club documentation, communications, institutional liaisons, and scheduling.",
+      "quote": "Many minds, one mission"
     },
     {
       "name": "Marylin Nithika",
       "role": "Treasurer",
-      "photo": "photos/team/26-27/4.png"
+      "photo": "photos/team/posters/marylin.jpg",
+      "bio": "Oversees financial planning, budget allocations, event sponsorships, and resource procurement.",
+      "quote": "We rise by lifting others"
     },
     {
       "name": "Hari Prasad S",
       "role": "Program Committee Chair",
-      "photo": "photos/team/26-27/5.png"
+      "photo": "photos/team/posters/hari-prasad-s.jpg",
+      "bio": "Curates hackathon challenge tracks, technical problem statements, and live competition structures.",
+      "quote": "Whatever it takes, trying to do better"
     },
     {
       "name": "Prajna R",
       "role": "Program Committee Vice Chair",
-      "photo": "photos/team/26-27/6.png"
+      "photo": "photos/team/posters/prajna-r.jpg",
+      "bio": "Coordinates speaker sessions, hands-on workshop schedules, and participant onboarding.",
+      "quote": "Make your own luck"
     },
     {
       "name": "Poojitha Subramanyam",
       "role": "Project Committee Chair",
-      "photo": "photos/team/26-27/7.png"
+      "photo": "photos/team/posters/poojitha-s.jpg",
+      "bio": "Leads internal technical initiatives, member project incubations, and open-source tooling.",
+      "quote": "Stop dreaming, start doing."
     },
     {
       "name": "Rajeev Sharma",
       "role": "Project Committee Vice Chair",
-      "photo": "photos/team/26-27/8.png"
+      "photo": "photos/team/posters/rajeev-sharma.jpg",
+      "bio": "Mentors beginner developers through Flutter sprints and ensures high-quality app submissions.",
+      "quote": "All you get is one life"
     },
     {
       "name": "Mohammed Faidh",
       "role": "Marketing Committee Chair",
-      "photo": "photos/team/26-27/9.png"
+      "photo": "photos/team/posters/mohammed-faidh.jpg",
+      "bio": "Commands visual branding, digital outreach campaigns, motion graphics, and social engagement.",
+      "quote": "Never lose hope, time will tell"
     },
     {
       "name": "Mrinal Satheesh",
       "role": "Marketing Committee Vice Chair",
-      "photo": "photos/team/26-27/10.png"
+      "photo": "photos/team/posters/mrinal-s.jpg",
+      "bio": "Drives content strategy, campus influencer collaborations, and event buzz generation.",
+      "quote": "Do it for the plot!"
     },
     {
       "name": "Sanjay Padmaraj",
       "role": "Review Committee Chair",
-      "photo": "photos/team/26-27/11.png"
+      "photo": "photos/team/posters/sanjay-padmaraj.jpg",
+      "bio": "Guarantees technical rigor, audits project codebases, and designs judging rubrics for hackathons.",
+      "quote": "Built on effort, driven by purpose",
+      "github": "https://github.com/123sanjaypadmaraj"
     }
   ],
   "earlier": [

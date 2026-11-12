@@ -255,6 +255,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     out.dataset.gpterr = !!q(".gpt-err");
     q("#gpt-new").click();
     out.dataset.reset = !!q(".gpt-empty") && !q(".gpt-msg");
+    f.contentDocument.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+    if (q("#pal-q")) { q("#pal-q").value = "assistant"; q("#pal-q").dispatchEvent(new Event("input", { bubbles: true })); }
+    out.dataset.pal = ((q("#pal-l") || {}).textContent || "").includes("Ask the assistant");
     out.dataset.err = f.contentDocument.documentElement.dataset.jsError || f.contentDocument.documentElement.dataset.cspViolation || "";
   }
   document.body.append(out);
@@ -279,7 +282,7 @@ if (!String(siteJson.chat?.endpoint || "").trim()) {
     if (!a) return "built-in chat test never finished";
     return a("err") ? "chat: " + a("err") : !a("bot").includes(firstMember) ? `answer missing ${firstMember}, got: ${a("bot")}`
       : !a("src").split(",").includes("team.html") ? `no team.html source link, got: ${a("src")}` : a("saved") !== "1" ? "chat was not added to the sidebar"
-      : a("fallback") !== "false" ? "built-in mode showed the offline line" : a("reset") !== "true" ? "New chat did not bring back the empty state" : "";
+      : a("fallback") !== "false" ? "built-in mode showed the offline line" : a("reset") !== "true" ? "New chat did not bring back the empty state" : a("pal") !== "true" ? "Ctrl+K menu has no Ask the assistant entry" : "";
   }]);
   for (const u of ["events.html", "team.html"]) extra.push([u, out => /id="chat-open"[^>]*href="chat.html"|href="chat.html"[^>]*id="chat-open"/.test(out) ? "" : "assistant link missing"]);
 } else console.log("note: site.json chat.endpoint is set, skipping the built-in answer checks");

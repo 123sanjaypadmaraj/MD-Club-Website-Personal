@@ -25,7 +25,18 @@ const NOPHOTOS = () => "No photos yet." + (draftKeys().length ? " Add them in th
 const draftKeys = () => { if (WP) return []; try { return Object.keys(localStorage).filter(k => k.startsWith("mad_content_")); } catch { return []; } };
 // Photo paths from the CMS may be root-absolute (/photos/x.jpg); pages live at the site root, so make them relative.
 const photoSrc = p => /^(data:|https?:|\/\/)/i.test(p) ? p : (WP ? WP.base : "") + String(p).replace(/^\/+/, "");
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Visitor settings (the hero phone's Settings app changes them): animations, lite effects, builder sounds.
+const pref = { get: k => { try { return localStorage.getItem("mad_" + k); } catch { return null; } }, set: (k, v) => { try { v === null ? localStorage.removeItem("mad_" + k) : localStorage.setItem("mad_" + k, v); } catch {} } };
+const sysReduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionOn = () => { const m = pref.get("motion"); return m ? m === "on" : !sysReduced; };
+let reduced = !motionOn();
+const applyPrefs = () => { reduced = !motionOn(); document.documentElement.dataset.motion = reduced ? "off" : "on"; document.documentElement.dataset.lite = pref.get("lite") === "1" ? "1" : "0"; };
+applyPrefs();
+// The eleven core-team roles: short tag and colour. The builders on the home stage and the team cards use them.
+const CREW = [["President", "PRES", "#D4A62A"], ["Vice President", "VP", "#E8609E"], ["Secretary", "SEC", "#7B45B8"], ["Treasurer", "TRES", "#19B4CF"],
+  ["Program Committee Chair", "PGM CH", "#2F8CEB"], ["Program Committee Vice Chair", "PGM VC", "#F07C2E"], ["Project Committee Chair", "PRJ CH", "#1FA77F"], ["Project Committee Vice Chair", "PRJ VC", "#4F5BE0"],
+  ["Marketing Committee Chair", "MKT CH", "#84B832"], ["Marketing Committee Vice Chair", "MKT VC", "#C04BC9"], ["Review Committee Chair", "REV CH", "#E0444F"]].map(([role, short, hex]) => ({ role, short, hex }));
+const roleOf = r => CREW.find(c => c.role.toLowerCase() === String(r).trim().toLowerCase()) || { role: r, short: "MAD", hex: "#8A93A1" };
 const page = document.body.dataset.page;
 const navKey = page === "event" ? "events" : page;
 const idx = i => String(i + 1).padStart(2, "0");
@@ -95,32 +106,99 @@ function activate() {
 
 const setMeta = (sel, attr, key, val) => { let m = $(sel); if (!m) { m = document.createElement("meta"); m.setAttribute(attr, key); document.head.append(m); } m.setAttribute("content", val); };
 const head = (eyebrow, title, lead) => `<div class="page-head wrap"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="reveal">${esc(title)}</h1>${lead ? `<p class="lead reveal">${esc(lead)}</p>` : ""}</div>`;
-const thumb = e => { const p = (e.photos || [])[0]; return `<span class="thumb" data-l="${esc(initials(e.name))}">${p ? `<img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="">` : ""}</span>`; };
+const thumb = e => { const p = (e.photos || [])[0] || e.poster; return `<span class="thumb" data-l="${esc(initials(e.name))}">${p ? `<img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="">` : ""}</span>`; };
 const eventRow = (e, i) => `<a class="row reveal" href="${esc(U("event", { e: e.slug }))}"><span class="idx">${idx(i)}</span>${thumb(e)}<span class="row-main"><b>${esc(e.name)}</b><span>${esc(e.description)}</span></span><span class="tag">${esc(e.semester)}${(e.photos || []).length ? ` · ${(e.photos || []).length} photo${e.photos.length === 1 ? "" : "s"}` : ""}</span>${ARROW}</a>`;
 const stat = s => `<div class="stat reveal"><b data-count>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`;
 const card = (t, p, i) => `<div class="card reveal"><span class="idx">${idx(i)}</span><h3>${esc(t)}</h3><p>${esc(p)}</p></div>`;
 const shot = (p, alt) => `<button type="button" class="shot" data-src="${esc(photoSrc(p))}"><img loading="lazy" decoding="async" src="${esc(photoSrc(p))}" alt="${esc(alt)}"></button>`;
 
-// Hero phone: a story player (tap sides, auto-advance) over the real event photos.
-function stories(site, events) {
-  const withPh = events.filter(e => (e.photos || []).length);
-  const evs = (withPh.length ? withPh : events).slice(0, 6);
-  if (!evs.length) return "";
-  window.__st = evs;
-  const words = site.tagline.split(/[^A-Za-z0-9]+/).filter(Boolean).join(" \u00b7 ").toUpperCase() + " \u00b7 ";
-  return `<div class="stage"><div class="phone" role="group" aria-label="Event stories"><span class="island"></span><div class="screen" id="st">
-${evs.map((e, i) => `<div class="st-slide${i ? "" : " on"}">${(e.photos || []).length ? `<img alt="" data-src="${esc(photoSrc(e.photos[0]))}">` : ""}<span class="st-type">${esc(e.name)}</span></div>`).join("")}
-<div class="st-bars">${evs.map(() => `<i><b></b></i>`).join("")}</div>
-<p class="st-head"><span class="st-av">${esc(site.name[0] || "M")}</span><b>${esc(site.instagram_handle.replace(/^@/, ""))}</b><span id="st-sem"></span></p>
-<button type="button" class="st-nav prev" aria-label="Previous event"></button><button type="button" class="st-nav next" aria-label="Next event"></button>
-<div class="st-cap"><b id="st-name"></b><span id="st-desc"></span><a class="st-open" id="st-open" href="${esc(U("events"))}">Open event ${ARROW}</a></div>
-</div></div>
-<svg class="badge" viewBox="0 0 120 120" aria-hidden="true"><defs><path id="badge-p" d="M60 60m-45 0a45 45 0 1 1 90 0a45 45 0 1 1-90 0"/></defs><circle cx="60" cy="60" r="60"/><g class="spin"><text><textPath href="#badge-p" textLength="278">${esc(words + words)}</textPath></text></g><text class="badge-m" x="60" y="69" text-anchor="middle">${esc(site.name.split(" ")[0])}</text></svg>
-<pre class="code" aria-hidden="true"><span class="c1">class</span> <span class="c2">MadClub</span> <span class="c1">extends</span> StatelessWidget {
-  <span class="c3">Widget</span> build(context) =&gt;
-    <span class="c2">Text</span>(<span class="c4">'Code. Fun. Repeat.'</span>);
-}</pre></div>`;
+// ---------- dated events ----------
+// Optional event fields: poster, tagline, start/end ("YYYY-MM-DD"), time ("11 AM onwards"), venue, register (https URL),
+// schedule [{title, text}] (one per day), perks [{title, text}], contacts [{name, phone}]. Events with a start date get the full details layout.
+const ymd = s => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(String(s || "").trim()); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; };
+const clock = t => { const m = /(\d{1,2})(?::(\d\d))?\s*([ap])\.?\s?m\b/i.exec(String(t || "")); if (!m) return [9, 0]; return [+m[1] % 12 + (/p/i.test(m[3]) ? 12 : 0), +(m[2] || 0)]; };
+function when(e) {
+  const s = ymd(e.start); if (!s) return null;
+  let en = ymd(e.end) || s; if (en < s) en = s;
+  const [h, mi] = clock(e.time), t0 = new Date(s), t1 = new Date(en);
+  t0.setHours(h, mi); t1.setHours(23, 59, 59);
+  const now = Date.now(), state = now < t0 ? "soon" : now <= t1 ? "live" : "past";
+  const f = (d, o) => d.toLocaleDateString("en-GB", o), Y = { day: "numeric", month: "short", year: "numeric" };
+  const range = +s === +en ? f(s, Y) : s.getMonth() === en.getMonth() && s.getFullYear() === en.getFullYear() ? `${s.getDate()}\u2013${f(en, Y)}` : `${f(s, { day: "numeric", month: "short" })} \u2013 ${f(en, Y)}`;
+  const days = []; for (const d = new Date(s); d <= en && days.length < 14; d.setDate(d.getDate() + 1)) days.push(f(d, { weekday: "short", day: "numeric", month: "short" }));
+  return { s, en, t0, state, range, days, label: { soon: "Coming up", live: "Happening now", past: "Latest event" }[state] };
 }
+// The event the home page spotlights: the one with the latest start date.
+const featured = events => events.filter(e => ymd(e.start)).sort((a, b) => ymd(b.start) - ymd(a.start))[0] || null;
+const regLink = e => /^https:\/\/\S+$/.test(String(e.register || "").trim()) ? e.register.trim() : "";
+const ICONS = {
+  date: `<path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>`,
+  time: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>`,
+  venue: `<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>`,
+  phone: `<path d="M6.6 3.5h2.6l1.4 4.2-2 1.4a12 12 0 0 0 6.3 6.3l1.4-2 4.2 1.4v2.6a2 2 0 0 1-2.2 2A17 17 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/>`,
+  star: `<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/>`
+};
+const icon = k => `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
+const statusPill = w => `<span class="status ${w.state}"><i aria-hidden="true"></i>${esc(w.label)}</span>`;
+const countdown = w => w.state === "soon" ? `<div class="cd" data-cd="${w.t0.getTime()}" role="timer" aria-label="Time until it starts">${[["d", "days"], ["h", "hours"], ["m", "mins"], ["s", "secs"]].map(([k, t]) => `<span><b data-u="${k}">00</b>${t}</span>`).join("")}</div>` : "";
+const facts = (e, w) => `<dl class="facts">${[["date", "Dates", w.range], ["time", "Time", e.time], ["venue", "Venue", e.venue]].filter(x => String(x[2] || "").trim()).map(([k, t, v]) => `<div>${icon(k)}<dt>${t}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
+// Home page: the latest dated event as a large poster card.
+function spotlight(events) {
+  const e = featured(events); if (!e) return "";
+  const w = when(e), href = U("event", { e: e.slug }), img = e.poster || (e.photos || [])[0], reg = w.state !== "past" && regLink(e);
+  const sched = (e.schedule || []).filter(x => x && x.title);
+  return `<section class="wrap spot-sec"><div class="spot reveal">${img ? `<a class="spot-art" href="${esc(href)}" tabindex="-1" aria-hidden="true"><img decoding="async" src="${esc(photoSrc(img))}" alt=""></a>` : ""}
+<div class="spot-body"><p class="spot-top">${statusPill(w)}<span class="tag">${esc(e.semester)}</span></p><h2><a href="${esc(href)}">${esc(e.name)}</a></h2><p class="lead">${esc(e.tagline || e.description)}</p>
+${sched.length ? `<ol class="spot-days">${sched.map((x, i) => `<li><small>Day ${i + 1}${w.days[i] ? ` \u00b7 ${esc(w.days[i])}` : ""}</small><b>${esc(x.title)}</b></li>`).join("")}</ol>` : ""}
+${facts(e, w)}${countdown(w)}
+<p class="spot-cta">${reg ? `<a class="btn primary" href="${esc(reg)}" target="_blank" rel="noopener">Register now ${ARROW}</a>` : ""}<a class="btn${reg ? "" : " primary"}" href="${esc(href)}">Event details${reg ? "" : ` ${ARROW}`}</a></p></div></div></section>`;
+}
+// Event page for a dated event: sticky poster, status and countdown, key facts, schedule, perks and contacts.
+function eventDetail(e, w, ph, evNav) {
+  const reg = w.state !== "past" && regLink(e), sched = (e.schedule || []).filter(x => x && x.title), perks = (e.perks || []).filter(x => x && x.title);
+  const people = (e.contacts || []).filter(c => c && c.name), sub = (t, body) => `<h2 class="sem">${t}</h2>${body}`;
+  return `<div class="wrap evx"><div class="evx-art">${e.poster ? `<button type="button" class="shot" data-src="${esc(photoSrc(e.poster))}" aria-label="View the ${esc(e.name)} poster full size"><img decoding="async" src="${esc(photoSrc(e.poster))}" alt="${esc(e.name)} poster"></button>` : ""}</div>
+<div class="evx-main"><p class="spot-top">${statusPill(w)}<span class="tag">${esc(e.semester)}${e.flagship ? " \u00b7 Flagship" : ""}</span></p><h1 class="reveal">${esc(e.name)}</h1>${e.tagline ? `<p class="lead">${esc(e.tagline)}</p>` : ""}
+${countdown(w)}${facts(e, w)}
+<p class="evx-cta">${reg ? `<a class="btn primary" href="${esc(reg)}" target="_blank" rel="noopener">Register now ${ARROW}</a>` : ""}${w.state !== "past" ? `<button type="button" class="btn" id="ics">Add to calendar</button>` : ""}<button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>
+${sub("About", `<p class="evx-about">${esc(e.description)}</p>`)}
+${sched.length ? sub("Schedule", `<ol class="tl">${sched.map((x, i) => `<li><span class="tl-d"><small>Day</small>${i + 1}</span><small>${esc(w.days[i] || "")}${e.time ? ` \u00b7 ${esc(e.time)}` : ""}</small><b>${esc(x.title)}</b>${x.text ? `<p>${esc(x.text)}</p>` : ""}</li>`).join("")}</ol>`) : ""}
+${perks.length ? sub("What you get", `<div class="perks">${perks.map(p => `<div>${icon("star")}<b>${esc(p.title)}</b>${p.text ? `<p>${esc(p.text)}</p>` : ""}</div>`).join("")}</div>`) : ""}
+${people.length ? sub("Questions? Call", `<div class="people-c">${people.map(c => { const tel = String(c.phone || "").replace(/[^\d+]/g, ""); return tel ? `<a href="tel:${esc(tel)}">${icon("phone")}<span><b>${esc(c.name)}</b><small>${esc(c.phone)}</small></span></a>` : `<span>${esc(c.name)}</span>`; }).join("")}</div>`) : ""}
+</div></div>
+<div class="wrap">${ph.length ? sub("Photos", `<div class="gallery">${ph.map((p, i) => shot(p, `${e.name}, photo ${i + 1}`)).join("")}</div>`) : ""}
+<p class="back"><a class="btn" href="${esc(U("events"))}">All events</a></p>${evNav}</div>`;
+}
+// Calendar file for a dated event (all-day entries over its dates).
+function icsFor(e) {
+  const w = when(e); if (!w) return null;
+  const d = x => `${x.getFullYear()}${String(x.getMonth() + 1).padStart(2, "0")}${String(x.getDate()).padStart(2, "0")}`;
+  const t = s => String(s || "").replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\r?\n/g, "\\n");
+  const after = new Date(w.en); after.setDate(after.getDate() + 1);
+  const desc = [e.tagline || e.description, e.time && "Time: " + e.time, regLink(e) && "Register: " + regLink(e), location.href.split("#")[0]].filter(Boolean).join("\n");
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MAD Club//Events//EN", "BEGIN:VEVENT", `UID:${e.slug}@madclub`, `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d+/g, "")}`,
+    `DTSTART;VALUE=DATE:${d(w.s)}`, `DTEND;VALUE=DATE:${d(after)}`, `SUMMARY:${t(e.name)}`, `LOCATION:${t(e.venue)}`, `DESCRIPTION:${t(desc)}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+}
+function wireCountdown() {
+  const els = $$("[data-cd]"); if (!els.length) return;
+  const tick = () => els.forEach(el => {
+    const ms = +el.dataset.cd - Date.now();
+    if (ms <= 0) { el.hidden = true; return; }
+    const v = { d: Math.floor(ms / 864e5), h: Math.floor(ms / 36e5) % 24, m: Math.floor(ms / 6e4) % 60, s: Math.floor(ms / 1e3) % 60 };
+    for (const b of $$("b[data-u]", el)) b.textContent = String(v[b.dataset.u]).padStart(2, "0");
+  });
+  tick(); setInterval(tick, 1000);
+}
+
+// Hero phone: an empty stage the builders assemble the phone on; assets/mad-os.js does the build and runs MAD OS.
+const SETTINGS_IC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>`;
+const BUILD_IC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.5h3" stroke-linecap="round"/></svg>`;
+const buildPanel = () => `<div class="build-panel" id="build-panel"><button type="button" class="build-btn" id="build-btn" aria-describedby="build-status"><span class="knob">${BUILD_IC}</span><span class="label">Build the phone</span></button>
+<div class="build-status" id="build-status" aria-live="polite"><b>Stage is empty</b><span>Press Build to assemble the phone</span><div class="build-progress" id="build-progress" aria-hidden="true"><i></i></div></div>
+<div class="build-extra"><button type="button" class="btn sm" id="build-full">Full screen</button><button type="button" class="btn sm ghost" id="build-reset">Reset</button></div></div>
+<p class="build-tip" id="build-tip"><span class="tip-ic">${SETTINGS_IC}</span><span class="tip-txt">The phone runs this website. Build it, then open its <b>Settings</b> app to switch dark mode, style, animations, lite effects and builder sounds.</span><button type="button" class="tip-btn" id="open-settings" hidden>Open Settings</button></p>`;
+const phoneStage = () => `<div class="stage" id="stage" data-state="idle" aria-label="Phone build stage"><div class="stage-marks" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="stage-hint" aria-hidden="true">Empty stage</p><div class="stage-floor" aria-hidden="true"></div>
+<div class="phone-rig"><div class="phone" id="phone"><span class="phone-btn vol-up"></span><span class="phone-btn vol-down"></span><span class="phone-btn power"></span><div class="phone-screen"><span class="phone-island"></span></div></div></div></div>`;
 // Two rows of real event photos drifting in opposite directions; each photo opens its event.
 function reel(events) {
   const items = events.flatMap(e => { const p = e.photos || []; return (p.length > 1 ? p.slice(1, 4) : p).map(src => ({ src, e })); });
@@ -146,8 +224,9 @@ const pages = {
     const announce = anText ? `<div class="wrap announce-w"><p class="announce" role="note"><i aria-hidden="true"></i><span>${esc(anText)}</span>${/^(https:\/\/|[\w-]+\.html)/.test(anLink) ? ` <a href="${esc(anHref)}">${esc(an.link_label || "Details")} ${ARROW}</a>` : ""}</p></div>` : "";
     const rl = reel(events);
     return announce + `<section class="hero"><div class="wrap hero-in"><div class="hero-copy"><p class="tagline">&gt; ${esc(site.tagline)}<i class="caret">_</i></p><h1 class="split">${words}</h1><p class="lead">${esc(site.hero_lead)}</p>
-<p class="hero-cta"><a class="btn primary" href="${esc(U("contact"))}">Join the club ${ARROW}</a><a class="btn" href="${esc(U("events"))}">See our events</a></p></div>${stories(site, events)}</div></section>
+<p class="hero-cta"><a class="btn primary" href="${esc(U("contact"))}">Join the club ${ARROW}</a><a class="btn" href="${esc(U("events"))}">See our events</a></p>${buildPanel()}</div>${phoneStage()}</div></section>
 <div class="marquee" aria-hidden="true"><div class="track">${marquee}</div></div>
+${spotlight(events)}
 <section class="wrap"><div class="stats">${site.stats.map(stat).join("")}</div></section>
 <section class="wrap"><p class="eyebrow">What makes us tick</p><div class="big-list">${site.highlights.map((h, i) => `<div class="big reveal"><span class="idx">${idx(i)}</span><h2>${esc(h.title)}</h2><p>${esc(h.text)}</p></div>`).join("")}</div></section>
 ${rl ? `<section class="reel-sec"><div class="wrap sec-head"><div><p class="eyebrow">Seen at our events</p><h2>Real rooms. Real people. Real builds.</h2></div><a class="btn" href="${esc(U("events"))}">Browse events</a></div>${rl}</section>` : ""}
@@ -179,6 +258,8 @@ ${rl ? `<section class="reel-sec"><div class="wrap sec-head"><div><p class="eyeb
     const ord = [...events].sort((x, y) => semKey(y.semester) - semKey(x.semester)), i = ord.indexOf(e);
     const lk = (ev, t) => ev ? `<a class="next-ev" href="${esc(U("event", { e: ev.slug }))}"><small>${t} event</small><b>${esc(ev.name)}</b>${thumb(ev)}</a>` : "";
     const evNav = ord.length > 1 ? `<nav class="back" aria-label="More events">${lk(ord[i + 1], "Older")}${lk(ord[i - 1], "Newer")}</nav>` : "";
+    const w = when(e);
+    if (w) return eventDetail(e, w, ph, evNav);
     return head(`${e.semester}${e.flagship ? " \u00b7 Flagship" : ""}${ph.length ? ` \u00b7 ${ph.length} photo${ph.length === 1 ? "" : "s"}` : ""}`, e.name, e.description) + `<div class="wrap">${ph.length ? `<div class="gallery">${ph.map((p, i) => shot(p, `${e.name}, photo ${i + 1}`)).join("")}</div>` : `<div class="empty">${NOPHOTOS()}</div>`}
 <p class="back"><a class="btn" href="${esc(U("events"))}">All events</a> <button type="button" class="btn" id="share">Share</button> <span class="sr" id="share-msg" aria-live="polite"></span></p>${evNav}</div>`;
   },
@@ -204,10 +285,19 @@ ${(site.college_page || "").trim() ? `<p class="lead"><a class="ul" href="${esc(
     const t = await load("team");
     const grp = r => /program/i.test(r) ? "Program" : /project/i.test(r) ? "Project" : /marketing/i.test(r) ? "Marketing" : /review/i.test(r) ? "Review" : "Leadership";
     const person = (p, sub, g) => `<div class="card person reveal" data-g="${g}"><div class="avatar">${esc(initials(p.name))}${p.photo ? `<img loading="lazy" decoding="async" src="${esc(photoSrc(p.photo))}" alt="">` : ""}</div><b>${esc(p.name)}</b><small>${esc(sub)}</small></div>`;
-    const groups = ["Leadership", "Program", "Project", "Marketing", "Review"];
-    return head("The team", "The people behind MAD.") +
-      `<div class="wrap tools"><div class="chips" id="tchips"><button type="button" class="chip" data-g="all" aria-pressed="true">All</button>${groups.map(g => `<button type="button" class="chip" data-g="${g}" aria-pressed="false">${g}</button>`).join("")}</div></div>
-<div class="wrap"><h2 class="sem">Core team ${esc(t.current_year)}</h2><div class="grid people" id="tgrid">${t.current.map(p => person(p, p.role, grp(p.role))).join("")}</div>
+    // Current team: one card per role, all the same size, poster on top, each projected in its role's colour.
+    const rays = n => { let r = 9 + n * 7, o = ""; for (let i = 0; i < 14; i++) { r = (r * 16807) % 2147483647; const x = (r % 1000) / 10; o += `<line x1="${i % 2 ? 100 : 0}" y1="100" x2="${x.toFixed(1)}" y2="${(r % 7) * 1.5}"/>`; } return o; };
+    const member = (p, i) => {
+      const c = roleOf(p.role), gh = /^https:\/\/github\.com\/[\w-]+/.test(p.github || "") ? p.github : "";
+      return `<article class="member" data-g="${grp(p.role)}" style="--node:${c.hex}">
+<div class="portrait">${p.photo ? `<img loading="lazy" decoding="async" src="${esc(photoSrc(p.photo))}" alt="${esc(p.name)}, ${esc(p.role)}">` : `<span class="ph-ini">${esc(initials(p.name))}</span>`}<span class="scan" aria-hidden="true"></span></div>
+<span class="holo" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 0,0 100,0"/><polygon points="100,100 0,0 100,0"/>${rays(i)}</svg><i class="hn tl"></i><i class="hn tr"></i><i class="hn bl"></i><i class="hn br"></i><b class="htag">${esc(c.short)}</b></span>
+<h3>${esc(p.name)}</h3><span class="role">${esc(p.role)}</span>${p.bio ? `<p>${esc(p.bio)}</p>` : ""}${p.quote ? `<blockquote class="quote">&ldquo;${esc(p.quote)}&rdquo;</blockquote>` : ""}${gh ? `<p class="links"><a class="ul" href="${esc(gh)}" rel="noopener">GitHub</a></p>` : ""}</article>`;
+    };
+    const groups = ["Leadership", "Program", "Project", "Marketing", "Review"].filter(g => t.current.some(p => grp(p.role) === g));
+    return head("The team", "The people behind MAD.", `Core team for ${t.current_year}. Each card is projected by the builder that holds that role.`) +
+      `<div class="wrap tools"><div class="seg" id="tseg" role="group" aria-label="Committee"><span class="seg-frame" aria-hidden="true"></span><button type="button" data-g="all" aria-pressed="true">Everyone</button>${groups.map(g => `<button type="button" data-g="${g}" aria-pressed="false">${g}</button>`).join("")}</div></div>
+<div class="wrap"><h2 class="sem">Core team ${esc(t.current_year)}</h2><div class="people members" id="tgrid">${t.current.map(member).join("")}</div>
 <h2 class="sem">Earlier teams</h2><div class="grid people">${t.earlier.map(p => person(p, `${p.role}, ${p.year}`, "all")).join("")}</div>
 ${(t.galleries || []).map(g => `<h2 class="sem">${esc(g.label)}</h2><div class="gallery faces">${g.photos.map((p, i) => shot(p, `${g.label}, photo ${i + 1}`)).join("")}</div>`).join("")}</div>`;
   },
@@ -262,6 +352,8 @@ function wireContactForm(site) {
 function setSkin(k) {
   root.dataset.skin = k;
   try { localStorage.setItem("skin", k); } catch {}
+  if (k !== "solar") pref.set("dark_skin", k);
+  document.dispatchEvent(new CustomEvent("mad:skin", { detail: k }));
   $$(".skins button").forEach(x => x.setAttribute("aria-pressed", x.dataset.skin === k));
   syncTheme();
 }
@@ -272,6 +364,7 @@ function wirePalette(site, events) {
   document.body.append(d);
   const items = [
     ...NAV.map(([k, t]) => ({ g: "Page", t, run: () => { location.href = U(k); } })),
+    ...(WP && !WP.urls.chat ? [] : [{ g: "Page", t: "Ask the assistant", run: () => { location.href = U("chat"); } }]),
     ...[...events].sort((a, b) => semKey(b.semester) - semKey(a.semester)).map(e => ({ g: "Event", t: e.name, s: e.semester, run: () => { location.href = U("event", { e: e.slug }); } })),
     ...SKINS.map(([k, t]) => ({ g: "Style", t: t + " style", run: () => setSkin(k) })),
     { g: "Link", t: "Instagram " + site.instagram_handle, run: () => open(site.instagram, "_blank", "noopener") }
@@ -501,27 +594,23 @@ function wireChatPage(site) {
   document.addEventListener("keydown", e => { if (e.key === "Escape") setSide(false); });
   empty(); drawList(); setSend();
 }
-function wireStories() {
-  const st = $("#st"), data = window.__st;
-  if (!st || !data) return;
-  const slides = $$(".st-slide", st), bars = $$(".st-bars i", st);
-  let n = 0;
-  const need = i => { const im = $("img[data-src]", slides[i]); if (im) { im.src = im.dataset.src; im.removeAttribute("data-src"); } };
-  const show = i => {
-    n = (i + slides.length) % slides.length;
-    slides.forEach((s, k) => s.classList.toggle("on", k === n));
-    bars.forEach((b, k) => { b.className = k < n ? "done" : k === n ? "on" : ""; });
-    need(n); need((n + 1) % slides.length);
-    const e = data[n];
-    $("#st-sem").textContent = e.semester; $("#st-name").textContent = e.name; $("#st-desc").textContent = e.description;
-    $("#st-open").href = U("event", { e: e.slug });
+// Loads assets/mad-os.js on the home page and hands it the content and the site settings it controls.
+function wirePhone(site, events) {
+  const stage = $("#stage");
+  if (!stage) return;
+  const prefs = {
+    skins: SKINS, skin: () => root.dataset.skin, setSkin,
+    isDark: () => root.dataset.skin !== "solar",
+    setDark: on => setSkin(on ? skinOk(pref.get("dark_skin") || "nebula") : "solar"),
+    motion: () => !reduced, setMotion: on => { pref.set("motion", on ? "on" : "off"); applyPrefs(); },
+    lite: () => root.dataset.lite === "1", setLite: on => { pref.set("lite", on ? "1" : null); applyPrefs(); },
+    sound: () => pref.get("sound") === "1", setSound: on => pref.set("sound", on ? "1" : null)
   };
-  st.addEventListener("animationend", e => { if (e.target.matches(".st-bars i.on b") && slides.length > 1) show(n + 1); });
-  st.addEventListener("error", e => { if (e.target.tagName === "IMG") e.target.remove(); }, true);
-  $(".st-nav.prev", st).onclick = () => show(n - 1);
-  $(".st-nav.next", st).onclick = () => show(n + 1);
-  st.addEventListener("keydown", e => { if (e.key === "ArrowRight") show(n + 1); else if (e.key === "ArrowLeft") show(n - 1); });
-  show(0);
+  const s = document.createElement("script");
+  s.src = (WP ? WP.base : "") + "assets/mad-os.js";
+  s.onload = () => window.MADPhone.mount({ stage, site, events, esc, photoSrc, U, prefs, semKey, roleOf, crew: CREW, loadTeam: () => load("team"), asset: p => (WP ? WP.base : "") + p });
+  s.onerror = () => { const h = $(".stage-hint", stage); if (h) h.textContent = "Could not load the phone"; };
+  document.head.append(s);
 }
 function wireEvents() {
   const st = window.__ev;
@@ -549,13 +638,41 @@ function wireEvents() {
   draw();
 }
 function wireTeam() {
-  const ch = $("#tchips");
-  if (!ch) return;
-  ch.onclick = e => {
-    const c = e.target.closest(".chip");
-    if (!c) return;
-    $$("#tchips .chip").forEach(x => x.setAttribute("aria-pressed", x === c));
-    $$("#tgrid .card").forEach(card => { card.hidden = c.dataset.g !== "all" && card.dataset.g !== c.dataset.g; });
+  const seg = $("#tseg"), grid = $("#tgrid");
+  if (!seg || !grid) return;
+  // Hologram: as each card comes into view its builder's four projector nodes light the corners, project it in
+  // the role's colour with a scan line, then it resolves into the real portrait.
+  const cards = $$(".member", grid);
+  if (reduced) cards.forEach(c => c.classList.add("holo-done"));
+  else {
+    let q = 0;
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (!e.isIntersecting) return;
+      io.unobserve(e.target);
+      const c = e.target, d = (q++ % 4) * 160;
+      setTimeout(() => { c.classList.add("holo-on"); setTimeout(() => { c.classList.add("holo-true"); setTimeout(() => c.classList.add("holo-done"), 1300); }, 1500); }, d);
+    }), { threshold: 0.25 });
+    cards.forEach(c => { c.classList.add("holo-wait"); io.observe(c); });
+  }
+  // Committee filter: a sliding selection frame, and cards glide to their new places.
+  const frame = $(".seg-frame", seg);
+  const place = b => { if (!frame || !b) return; frame.style.width = b.offsetWidth + "px"; frame.style.height = b.offsetHeight + "px"; frame.style.transform = `translate(${b.offsetLeft}px,${b.offsetTop}px)`; };
+  const pressed = () => $('button[aria-pressed="true"]', seg);
+  place(pressed()); requestAnimationFrame(() => seg.classList.add("ready"));
+  addEventListener("resize", () => place(pressed()), { passive: true });
+  seg.onclick = e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    $$("button", seg).forEach(x => x.setAttribute("aria-pressed", x === b));
+    place(b);
+    const first = new Map(cards.map(c => [c, c.getBoundingClientRect()]));
+    cards.forEach(c => { c.hidden = b.dataset.g !== "all" && c.dataset.g !== b.dataset.g; if (!c.hidden) c.classList.add("holo-done", "holo-true", "holo-on"); });
+    if (reduced) return;
+    cards.filter(c => !c.hidden).forEach(c => {
+      const f = first.get(c), l = c.getBoundingClientRect();
+      if (f && f.width && (f.left !== l.left || f.top !== l.top)) c.animate([{ transform: `translate(${f.left - l.left}px,${f.top - l.top}px)` }, { transform: "none" }], { duration: 480, easing: "cubic-bezier(.34,1.2,.64,1)" });
+      else if (!f || !f.width) c.animate([{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 360, easing: "ease-out" });
+    });
   };
 }
 
@@ -566,8 +683,8 @@ function wireTeam() {
     shell(site, evs); syncTheme();
     main.innerHTML = await pages[page](site);
     if (page !== "event" && page !== "events") document.title = (page === "home" ? "" : $("h1", main)?.textContent.replace(/\.$/, "") + " | ") + site.name + " | " + site.college_short;
-    if ($(".gallery", main) && !$("#lb")) main.insertAdjacentHTML("beforeend", `<dialog id="lb" aria-label="Photo viewer"><img alt=""><p class="lb-err" role="alert" hidden>Could not load this photo.</p><div class="lb-bar"><button type="button" class="btn" data-lb="-1">Previous</button><span class="lb-count" aria-live="polite"></span><button type="button" class="btn" data-lb="1">Next</button><form method="dialog"><button class="btn">Close</button></form></div></dialog>`);
-    const shotsOf = b => $$(".shot:not([hidden])", b.closest(".gallery") || main);
+    if ($(".shot", main) && !$("#lb")) main.insertAdjacentHTML("beforeend", `<dialog id="lb" aria-label="Photo viewer"><img alt=""><p class="lb-err" role="alert" hidden>Could not load this photo.</p><div class="lb-bar"><button type="button" class="btn" data-lb="-1">Previous</button><span class="lb-count" aria-live="polite"></span><button type="button" class="btn" data-lb="1">Next</button><form method="dialog"><button class="btn">Close</button></form></div></dialog>`);
+    const shotsOf = b => $$(".shot:not([hidden])", b.closest(".gallery, .evx-art") || main);
     const photoUrl = b => location.pathname + location.search + "#photo-" + ($$(".shot:not([hidden])", main).indexOf(b) + 1);
     const showShot = (d, b) => {
       try { history.replaceState(history.state, "", photoUrl(b)); } catch {}
@@ -627,13 +744,21 @@ function wireTeam() {
         } catch (err) { if (err?.name !== "AbortError") say("Copy failed"); }
         return;
       }
+      if (e.target.closest("#ics")) {
+        const ev = evs.find(x => x.slug === new URLSearchParams(location.search).get("e")), ics = ev && icsFor(ev);
+        if (!ics) return;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" })); a.download = ev.slug + ".ics";
+        a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        return;
+      }
       const b = e.target.closest(".shot"); if (!b) return;
       const d = $("#lb"); try { history.pushState({ lb: 1 }, "", photoUrl(b)); } catch {}
       showShot(d, b); d.showModal();
     });
     const dl = lb && /^#photo-(\d+)$/.exec(location.hash);
     if (dl) { const b = $$(".shot:not([hidden])", main)[+dl[1] - 1]; if (b) { b.scrollIntoView({ block: "center" }); showShot(lb, b); lb.showModal(); } }
-    wirePalette(site, evs); wireMotion(); wireStories(); wireEvents(); wireContactForm(site); wireTeam(); wireDock(); wireChatFab(site); wireChatPage(site);
+    wirePalette(site, evs); wireMotion(); wirePhone(site, evs); wireEvents(); wireContactForm(site); wireTeam(); wireDock(); wireChatFab(site); wireChatPage(site); wireCountdown();
     activate();
     document.documentElement.dataset.ready = "1";
   } catch (err) {

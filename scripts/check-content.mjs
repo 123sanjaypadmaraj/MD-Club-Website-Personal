@@ -43,6 +43,22 @@ else {
     if (ev.semester && !/^\d\d-\d\d (Odd|Even) Sem$/.test(ev.semester))
       errors.push(`${id}: semester must look like "24-25 Odd Sem"`);
     checkPhotos(id, ev.photos);
+    if (ev.poster !== undefined && ev.poster !== "") {
+      if (typeof ev.poster !== "string") errors.push(`${id}: poster must be a string`);
+      else checkPhotos(id + " poster", [ev.poster]);
+    }
+    const date = k => ev[k] === undefined || ev[k] === "" || (typeof ev[k] === "string" && /^\d{4}-\d\d-\d\d$/.test(ev[k]) && !isNaN(Date.parse(ev[k])));
+    for (const k of ["start", "end"]) if (!date(k)) errors.push(`${id}: ${k} must be a date like 2026-11-17`);
+    if (date("start") && date("end") && ev.start && ev.end && ev.end < ev.start) errors.push(`${id}: end is before start`);
+    if (ev.end && !ev.start) errors.push(`${id}: end is set but start is empty`);
+    for (const k of ["tagline", "time", "venue", "register"]) if (ev[k] !== undefined && typeof ev[k] !== "string") errors.push(`${id}: ${k} must be a string`);
+    if (typeof ev.register === "string" && ev.register.trim() && !/^https:\/\/\S+$/.test(ev.register.trim())) errors.push(`${id}: register must be empty or start with https://`);
+    for (const [k, keys] of [["schedule", ["title"]], ["perks", ["title"]], ["contacts", ["name"]]]) {
+      if (ev[k] === undefined) continue;
+      if (!Array.isArray(ev[k])) { errors.push(`${id}: ${k} must be a list`); continue; }
+      ev[k].forEach((it, j) => { for (const kk of keys) if (typeof it?.[kk] !== "string" || !it[kk].trim()) errors.push(`${id}: ${k} #${j + 1} missing ${kk}`); });
+    }
+    (ev.contacts || []).forEach((c, j) => { if (c?.phone && !/^\+?[0-9 ()-]{7,20}$/.test(c.phone)) errors.push(`${id}: contacts #${j + 1} phone is not a valid phone number`); });
   });
 }
 
@@ -72,7 +88,7 @@ if (team) {
 try {
   const used = new Set();
   const norm = p => String(p).replace(/^\//, "").replace(/\\/g, "/");
-  for (const ev of events || []) for (const p of ev.photos || []) used.add(norm(p));
+  for (const ev of events || []) for (const p of [...(ev.photos || []), ...(typeof ev.poster === "string" && ev.poster ? [ev.poster] : [])]) used.add(norm(p));
   for (const g of docs["team.json"]?.galleries || []) for (const p of g.photos || []) used.add(norm(p));
   for (const k of ["current", "earlier"]) for (const m of docs["team.json"]?.[k] || []) if (typeof m?.photo === "string") used.add(norm(m.photo));
   const walk = d => readdirSync(join(root, d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(d + "/" + e.name) : [d + "/" + e.name]);
